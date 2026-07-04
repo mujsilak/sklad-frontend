@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Sklad — Beyond Infinity</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;color:#1a1a1a;height:100vh;overflow:hidden}
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:220px;background:#fff;border-right:1px solid #e5e5e5;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.sidebar-logo{padding:20px 16px 12px;border-bottom:1px solid #f0f0f0}
+.sidebar-logo h1{font-size:16px;font-weight:700;color:#1D9E75}
+.sidebar-logo p{font-size:11px;color:#888;margin-top:2px}
+.sidebar-nav{padding:8px 0;flex:1}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;font-size:14px;color:#555;border-radius:0;transition:background .15s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:#f5f5f5;color:#1a1a1a}
+.nav-item.active{background:#E1F5EE;color:#0F6E56;font-weight:500}
+.nav-item svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.nav-divider{height:1px;background:#f0f0f0;margin:6px 12px}
+.nav-section-label{font-size:10px;font-weight:600;color:#aaa;text-transform:uppercase;letter-spacing:.06em;padding:10px 16px 4px}
+.mobile-nav{display:none;background:#fff;border-top:1px solid #e5e5e5;flex-shrink:0;position:fixed;bottom:0;left:0;right:0;z-index:100}
+.mobile-nav-inner{display:flex}
+.mobile-nav-btn{flex:1;padding:10px 4px 6px;text-align:center;border:none;background:none;cursor:pointer;font-size:10px;color:#888;display:flex;flex-direction:column;align-items:center;gap:3px}
+.mobile-nav-btn.active{color:#1D9E75}
+.mobile-nav-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.screen{display:none}
+.screen.active{display:block}
+.page-header{padding:20px 24px 16px;border-bottom:1px solid #e8e8e8;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.page-header h2{font-size:18px;font-weight:600}
+.page-header p{font-size:13px;color:#888;margin-top:2px}
+.header-actions{display:flex;gap:8px;flex-shrink:0}
+.btn{padding:8px 14px;border-radius:8px;border:1px solid #ddd;background:#fff;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;color:#444;white-space:nowrap}
+.btn:hover{background:#f5f5f5}
+.btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn-primary{background:#1D9E75;color:#fff;border-color:#1D9E75}
+.btn-primary:hover{background:#0F6E56}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:20px 24px 0}
+.stat-card{background:#fff;border-radius:12px;padding:16px;border:1px solid #eee}
+.stat-num{font-size:28px;font-weight:700;line-height:1}
+.stat-num.green{color:#1D9E75}
+.stat-num.red{color:#E24B4A}
+.stat-num.amber{color:#BA7517}
+.stat-num.gray{color:#888}
+.stat-label{font-size:12px;color:#888;margin-top:4px}
+.content-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px 24px}
+.content-card{background:#fff;border-radius:12px;border:1px solid #eee;overflow:hidden}
+.content-card.full{grid-column:1/-1}
+.card-header{padding:14px 16px;border-bottom:1px solid #f0f0f0;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:space-between}
+.card-header a{font-size:12px;font-weight:400;color:#1D9E75;cursor:pointer;text-decoration:none}
+.search-area{padding:16px 24px 8px}
+.search-input-wrap{position:relative}
+.search-input{width:100%;padding:10px 14px 10px 40px;border:1px solid #ddd;border-radius:10px;font-size:15px;background:#fff;outline:none}
+.search-input:focus{border-color:#1D9E75}
+.search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:16px;height:16px;stroke:#999;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.search-meta{font-size:12px;color:#888;margin-top:8px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:#f8f8f8}
+th{padding:10px 14px;text-align:left;font-weight:500;color:#666;border-bottom:1px solid #eee;white-space:nowrap}
+td{padding:10px 14px;border-bottom:1px solid #f5f5f5;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa;cursor:pointer}
+.td-name{font-weight:500;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.td-sub{font-size:11px;color:#888;margin-top:1px}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;white-space:nowrap}
+.badge-ok{background:#E1F5EE;color:#085041}
+.badge-low{background:#FAEEDA;color:#633806}
+.badge-zero{background:#FCEBEB;color:#791F1F}
+.badge-empty{background:#f0f0f0;color:#888}
+.badge-sledovany{background:#EEEDFE;color:#3C3489}
+.badge-inventurni{background:#E1F5EE;color:#085041}
+.alert-row{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #f5f5f5;cursor:pointer}
+.alert-row:last-child{border-bottom:none}
+.alert-row:hover{background:#fafafa}
+.alert-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.alert-dot.red{background:#E24B4A}
+.alert-dot.amber{background:#EF9F27}
+.alert-info{flex:1;min-width:0}
+.alert-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alert-detail{font-size:11px;color:#888;margin-top:1px}
+.alert-badge{flex-shrink:0}
+.detail-panel{background:#fff;border-left:1px solid #e5e5e5;width:360px;flex-shrink:0;display:none;flex-direction:column;overflow-y:auto}
+.detail-panel.open{display:flex}
+.detail-panel-header{padding:16px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:10px;position:sticky;top:0;background:#fff;z-index:10}
+.close-btn{background:none;border:none;cursor:pointer;color:#888;display:flex;padding:4px}
+.close-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.detail-panel-title{font-size:14px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.detail-panel-body{padding:16px;flex:1}
+.detail-qty{text-align:center;background:#f8f8f8;border-radius:12px;padding:20px;margin-bottom:14px}
+.detail-qty-num{font-size:44px;font-weight:700;line-height:1}
+.detail-qty-num.ok{color:#1D9E75}
+.detail-qty-num.low{color:#BA7517}
+.detail-qty-num.zero{color:#E24B4A}
+.detail-qty-label{font-size:12px;color:#888;margin-top:4px}
+.detail-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.detail-action-btn{padding:12px 8px;border-radius:10px;border:1.5px solid;font-size:13px;font-weight:500;cursor:pointer;text-align:center;line-height:1.3}
+.detail-action-btn:active{opacity:.75}
+.btn-prijem{background:#E1F5EE;color:#0F6E56;border-color:#9FE1CB}
+.btn-vydej{background:#FAECE7;color:#993C1D;border-color:#F5C4B3}
+.btn-odpis{background:#FFF8E7;color:#633806;border-color:#F5D78E}
+.btn-inventura-small{background:#f0f0f0;color:#444;border-color:#ddd;grid-column:1/-1;padding:10px}
+.detail-fields{background:#f8f8f8;border-radius:10px;overflow:hidden;margin-bottom:14px}
+.detail-field-row{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-bottom:1px solid #efefef;font-size:13px}
+.detail-field-row:last-child{border-bottom:none}
+.detail-field-label{color:#888}
+.detail-field-val{font-weight:500;text-align:right;max-width:55%}
+.form-group{margin-bottom:14px}
+.form-label{font-size:13px;font-weight:500;color:#555;margin-bottom:5px;display:block}
+.form-input{width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;outline:none}
+.form-input:focus{border-color:#1D9E75}
+.form-select{width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;outline:none;background:#fff}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wizard-progress{background:#f0f0f0;height:4px;border-radius:2px;margin:0 24px 16px}
+.wizard-progress-bar{height:100%;background:#1D9E75;border-radius:2px;transition:width .3s}
+.wizard-card{background:#fff;border-radius:16px;border:1px solid #eee;margin:0 24px;padding:24px}
+.wizard-nazev{font-size:18px;font-weight:600;margin-bottom:4px}
+.wizard-sub{font-size:13px;color:#888;margin-bottom:20px}
+.wizard-input-big{width:100%;padding:16px;border:2px solid #ddd;border-radius:12px;font-size:32px;font-weight:600;text-align:center;outline:none;margin-bottom:12px}
+.wizard-input-big:focus{border-color:#1D9E75}
+.wizard-actions{display:flex;gap:8px}
+.wizard-skip{background:#f0f0f0;color:#555;border:none;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;flex:1}
+.wizard-next{background:#1D9E75;color:#fff;border:none;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;flex:2}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;align-items:center;justify-content:center}
+#detailOverlay{align-items:center;justify-content:center}
+#detailOverlay .detail-panel{width:100%}
+@media(max-width:768px){
+  #detailOverlay{align-items:flex-end}
+  #detailOverlay .detail-panel{border-radius:16px 16px 0 0;max-height:80vh}
+}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;padding:24px;width:100%;max-width:420px;margin:16px}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:6px}
+.modal-sub{font-size:13px;color:#888;margin-bottom:16px}
+.modal-input{width:100%;padding:12px;border:1.5px solid #ddd;border-radius:10px;font-size:22px;font-weight:600;text-align:center;outline:none;margin-bottom:12px}
+.modal-input:focus{border-color:#1D9E75}
+.modal-poznamka{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;outline:none;margin-bottom:12px}
+.modal-poznamka:focus{border-color:#1D9E75}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end}
+.modal-btn{padding:10px 20px;border-radius:8px;border:none;font-size:14px;font-weight:500;cursor:pointer}
+.modal-btn.confirm{background:#1D9E75;color:#fff}
+.modal-btn.cancel{background:#f0f0f0;color:#444}
+@media(max-width:768px){
+  body{overflow:auto;height:auto}
+  .app{flex-direction:column;height:auto;min-height:100vh}
+  .sidebar{display:none}
+  .mobile-nav{display:block}
+  .main{overflow:visible;padding-bottom:60px}
+  .stats-grid{grid-template-columns:repeat(2,1fr);padding:12px 12px 0}
+  .content-grid{grid-template-columns:1fr;padding:12px}
+  .content-card.full{grid-column:1}
+  .detail-panel{width:100%;border-left:none;border-top:1px solid #eee}
+  .page-header{padding:14px 12px}
+  .search-area{padding:12px 12px 6px}
+  th,td{padding:8px 10px}
+  .wizard-card{margin:0 12px}
+  .wizard-progress{margin:0 12px 12px}
+}
+.loading{text-align:center;padding:60px 20px;color:#888;font-size:14px}
+.spinner{width:32px;height:32px;border:3px solid #eee;border-top-color:#1D9E75;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:40px 20px;color:#888;font-size:14px}
+.saving-indicator{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#BA7517;margin-left:8px;vertical-align:middle}
+.saving-indicator .dot{width:6px;height:6px;border-radius:50%;background:#BA7517;animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+.mobile-menu-item{display:flex;align-items:center;gap:14px;padding:14px 20px;border:none;background:none;width:100%;text-align:left;font-size:15px;font-weight:500;color:#1a1a1a;cursor:pointer}
+.mobile-menu-item:active{background:#f5f5f5}
+.mobile-menu-item svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;color:#1D9E75}
+</style>
+</head>
+<body>
+<div class="modal-overlay" id="pinScreen" style="position:fixed;inset:0;z-index:500;display:flex;background:rgba(0,0,0,.4);align-items:center;justify-content:center">
+  <div class="modal" style="max-width:320px;text-align:center">
+    <div class="modal-title">Beyond Infinity — Sklad</div>
+    <div class="modal-sub">Zadej PIN pro přístup</div>
+    <input class="modal-input" id="pinInput" type="password" inputmode="numeric" placeholder="PIN" autocomplete="off" onkeydown="if(event.key==='Enter') prihlasitPin()">
+    <div id="pinError" style="display:none;color:#E24B4A;font-size:13px;margin-bottom:12px"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="prihlasitPin()">Přihlásit</button>
+  </div>
+</div>
+<div class="app" id="appRoot" style="display:none">
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <h1>Beyond Infinity</h1>
+      <p>Správa skladu</p>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" onclick="showScreen('prehled')" id="snav-prehled">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Přehled
+      </button>
+      <button class="nav-item" onclick="showScreen('search')" id="snav-search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Hledat produkty
+      </button>
+      <button class="nav-item" onclick="showScreen('skener')" id="snav-skener">
+        <svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="1"/><line x1="7" y1="7" x2="7" y2="17"/><line x1="11" y1="7" x2="11" y2="17"/><line x1="15" y1="7" x2="15" y2="17"/></svg>Skenovat EAN
+      </button>
+      <button class="nav-item" onclick="showScreen('alerty')" id="snav-alerty">
+        <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Alerty
+      </button>
+      <div class="nav-divider"></div>
+      <div class="nav-section-label">Nástroje</div>
+      <button class="nav-item" onclick="showScreen('inventura')" id="snav-inventura">
+        <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Hromadná inventura
+      </button>
+      <button class="nav-item" onclick="showScreen('pohyby')" id="snav-pohyby">
+        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Historie pohybů
+      </button>
+      <button class="nav-item" onclick="showScreen('sprava')" id="snav-sprava">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>Správa produktů
+      </button>
+      <div class="nav-divider"></div>
+      <button class="nav-item" onclick="showScreen('nakup')" id="snav-nakup">
+        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>Nákupní seznam
+      </button>
+      <button class="nav-item" onclick="showScreen('hodnota')" id="snav-hodnota">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Hodnota skladu
+      </button>
+      <button class="nav-item" onclick="exportCsv()">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export CSV
+      </button>
+      <button class="nav-item" onclick="showScreen('qr')" id="snav-qr">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5"/><rect x="16" y="3" width="5" height="5"/><rect x="3" y="16" width="5" height="5"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><line x1="21" y1="21" x2="21" y2="21"/></svg>QR kód
+      </button>
+    </nav>
+  </div>
+
+  <div class="main" id="mainArea">
+
+    <!-- PŘEHLED -->
+    <div class="screen active" id="screen-prehled">
+      <div class="page-header">
+        <div><h2>Přehled skladu</h2><p id="prehledSub">Načítám data...</p></div>
+        <div class="header-actions">
+          <button class="btn btn-primary" onclick="showScreen('inventura')">
+            <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Inventura
+          </button>
+        </div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-num green" id="statTotal">–</div><div class="stat-label">produktů evidováno</div></div>
+        <div class="stat-card"><div class="stat-num green" id="statSestavem">–</div><div class="stat-label">naskladněno</div></div>
+        <div class="stat-card"><div class="stat-num red" id="statKriticky">–</div><div class="stat-label">kritické</div></div>
+        <div class="stat-card"><div class="stat-num amber" id="statNizky">–</div><div class="stat-label">nízký stav</div></div>
+      </div>
+      <div class="content-grid">
+        <div class="content-card">
+          <div class="card-header">Kritické <a onclick="showScreen('alerty')">zobrazit vše →</a></div>
+          <div id="prehledKriticky"><div class="empty" style="padding:20px">Načítám...</div></div>
+        </div>
+        <div class="content-card">
+          <div class="card-header">Nízký stav <a onclick="showScreen('alerty')">zobrazit vše →</a></div>
+          <div id="prehledNizky"><div class="empty" style="padding:20px">Načítám...</div></div>
+        </div>
+        <div class="content-card full">
+          <div class="card-header">Expirace <a onclick="showScreen('alerty')">zobrazit vše →</a></div>
+          <div id="prehledExpirace"><div class="empty" style="padding:20px">Načítám...</div></div>
+        </div>
+        <div class="content-card full">
+          <div class="card-header">Poslední pohyby <a onclick="showScreen('pohyby')">zobrazit vše →</a></div>
+          <div id="prehledPohyby"><div class="empty" style="padding:20px">Načítám...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEARCH -->
+    <div class="screen" id="screen-search">
+      <div class="page-header"><div><h2>Hledat produkty</h2><p id="searchMeta">Zadej název produktu</p></div></div>
+      <div class="search-area">
+        <div class="search-input-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input class="search-input" id="searchInput" type="search" placeholder="Název, kategorie, dodavatel..." autocomplete="off">
+        </div>
+      </div>
+      <div style="display:flex;overflow:hidden">
+        <div style="flex:1;overflow-y:auto">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Název</th><th>Kategorie</th><th>Dodavatel</th><th>Umístění</th><th>Stav</th><th>Minimum</th><th>Optimum</th><th>Typ</th></tr></thead>
+              <tbody id="searchBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALERTY -->
+    <div class="screen" id="screen-alerty">
+      <div class="page-header"><div><h2>Alerty</h2><p>Produkty vyžadující pozornost</p></div></div>
+      <div class="content-grid">
+        <div class="content-card">
+          <div class="card-header" style="color:#A32D2D">🔴 Kritické — došlo / prázdné</div>
+          <div id="alertyKriticky"></div>
+        </div>
+        <div class="content-card">
+          <div class="card-header" style="color:#854F0B">🟠 Nízký stav</div>
+          <div id="alertyNizky"></div>
+        </div>
+        <div class="content-card full">
+          <div class="card-header" style="color:#854F0B">⚠️ Expirace</div>
+          <div id="alertyExpirace"><div class="empty" style="padding:20px">Načítám...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INVENTURA -->
+    <div class="screen" id="screen-inventura">
+      <div class="page-header">
+        <div><h2>Hromadná inventura</h2><p id="wizardMeta">Projdi produkty a zadej aktuální stav</p></div>
+        <div class="header-actions"><button class="btn" onclick="resetWizard()">Začít znovu</button></div>
+      </div>
+      <div class="wizard-progress"><div class="wizard-progress-bar" id="wizardBar" style="width:0%"></div></div>
+      <div id="wizardContent"></div>
+    </div>
+
+    <!-- POHYBY -->
+    <div class="screen" id="screen-pohyby">
+      <div class="page-header">
+        <div><h2>Historie pohybů</h2><p>Posledních 100 zápisů</p></div>
+        <div class="header-actions">
+          <button class="btn" onclick="loadPohyby()">
+            <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.28-4.79"/></svg>Obnovit
+          </button>
+        </div>
+      </div>
+      <div style="padding:16px 24px">
+        <div class="content-card full">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Datum</th><th>Čas</th><th>Produkt</th><th>Typ</th><th>Změna</th><th>Stav po</th><th>Poznámka</th></tr></thead>
+              <tbody id="pohybyBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPRÁVA -->
+    <div class="screen" id="screen-sprava">
+      <div class="page-header">
+        <div><h2>Správa produktů</h2><p>Přidat nový nebo upravit existující</p></div>
+        <div class="header-actions"><button class="btn btn-primary" onclick="showAddModal()">+ Přidat produkt</button></div>
+      </div>
+      <div style="padding:16px 24px">
+        <div class="content-card full">
+          <div style="padding:12px 16px;border-bottom:1px solid #f0f0f0">
+            <input class="search-input" id="spravaSearch" type="search" placeholder="Hledej produkt ke správě..." style="max-width:360px;font-size:14px;padding-left:14px">
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Název</th><th>Kategorie</th><th>Ks v bal.</th><th>Minimum</th><th>Umístění</th><th>Typ</th><th></th></tr></thead>
+              <tbody id="spravaBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- NÁKUPNÍ SEZNAM -->
+    <div class="screen" id="screen-nakup">
+      <div class="page-header">
+        <div><h2>Nákupní seznam</h2><p id="nakupSub">Produkty které je třeba objednat</p></div>
+        <div class="header-actions">
+          <button class="btn" onclick="exportNakupCsv()">
+            <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+          <button class="btn btn-primary" onclick="poslaNakupEmailem()">
+            <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Poslat emailem
+          </button>
+        </div>
+      </div>
+      <div id="nakupContent" style="padding:16px 24px"></div>
+    </div>
+
+    <!-- SKENER -->
+    <div class="screen" id="screen-skener">
+      <div class="page-header">
+        <div><h2>Skenovat EAN</h2><p id="skenerSub">Namiř kameru na čárový kód</p></div>
+      </div>
+      <div style="padding:16px 24px">
+        <div class="content-card full" style="overflow:hidden">
+          <div id="skenerVideoWrap" style="position:relative;background:#000;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center">
+            <video id="skenerVideo" style="width:100%;height:100%;object-fit:cover;display:none"></video>
+            <div id="skenerPlaceholder" style="color:#888;text-align:center;padding:20px">
+              <button class="btn btn-primary" onclick="spustitSkener()">📷 Spustit kameru</button>
+            </div>
+            <div id="skenerOverlay" style="position:absolute;inset:0;display:none;pointer-events:none">
+              <div style="position:absolute;top:50%;left:10%;right:10%;height:2px;background:#1D9E75;transform:translateY(-50%);box-shadow:0 0 8px #1D9E75"></div>
+            </div>
+          </div>
+          <div style="padding:12px 16px;display:flex;gap:8px">
+            <button class="btn" style="flex:1;justify-content:center" id="skenerStopBtn" onclick="zastavitSkener()" style="display:none">Zastavit kameru</button>
+          </div>
+        </div>
+
+        <div id="skenerVysledek" style="margin-top:16px"></div>
+      </div>
+    </div>
+
+    <!-- HODNOTA SKLADU -->
+    <div class="screen" id="screen-hodnota">
+      <div class="page-header">
+        <div><h2>Hodnota skladu</h2><p id="hodnotaSub">Vázaný kapitál ve skladu</p></div>
+        <div class="header-actions">
+          <button class="btn" onclick="loadHodnota()">
+            <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.28-4.79"/></svg>
+            Obnovit
+          </button>
+        </div>
+      </div>
+      <div id="hodnotaContent" style="padding:16px 24px">
+        <div class="empty">Načítám...</div>
+      </div>
+    </div>
+
+    <!-- QR -->
+    <div class="screen" id="screen-qr">
+      <div class="page-header"><div><h2>QR kód</h2><p>Rychlý přístup na mobilu</p></div></div>
+      <div style="padding:24px;text-align:center">
+        <div class="content-card" style="display:inline-block;padding:32px;max-width:360px">
+          <div id="qrcode" style="margin:0 auto 16px"></div>
+          <p style="font-size:14px;font-weight:500;margin-bottom:6px">Naskenuj pro otevření skladu</p>
+          <p style="font-size:12px;color:#888;word-break:break-all" id="qrUrl"></p>
+          <button class="btn btn-primary" style="margin-top:16px;width:100%" onclick="window.print()">Vytisknout</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<!-- GLOBÁLNÍ DETAIL PANEL -->
+<div class="modal-overlay" id="detailOverlay" onclick="if(event.target===this) closeDetail()">
+  <div class="detail-panel open" id="detailPanelGlobal" style="max-width:420px;border-radius:16px;border-left:none;max-height:85vh">
+    <div class="detail-panel-header">
+      <button class="close-btn" onclick="closeDetail()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <div class="detail-panel-title" id="detailPanelTitle"></div>
+    </div>
+    <div class="detail-panel-body" id="detailPanelBody"></div>
+  </div>
+</div>
+
+<!-- MOBILE NAV -->
+<div class="mobile-nav">
+  <div class="mobile-nav-inner">
+    <button class="mobile-nav-btn active" onclick="showScreen('prehled')" id="mnav-prehled">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Přehled
+    </button>
+    <button class="mobile-nav-btn" onclick="showScreen('search')" id="mnav-search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Hledat
+    </button>
+    <button class="mobile-nav-btn" onclick="showScreen('alerty')" id="mnav-alerty">
+      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Alerty
+    </button>
+    <button class="mobile-nav-btn" onclick="showScreen('nakup')" id="mnav-nakup">
+      <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>Nákup
+    </button>
+    <button class="mobile-nav-btn" onclick="toggleMobileMenu()">
+      <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>Menu
+    </button>
+  </div>
+</div>
+
+<!-- MOBILE SLIDE MENU -->
+<div id="mobileMenuOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200" onclick="closeMobileMenu()"></div>
+<div id="mobileMenuPanel" style="display:none;position:fixed;bottom:60px;left:0;right:0;background:#fff;border-radius:16px 16px 0 0;z-index:201;padding:8px 0 16px">
+  <div style="width:36px;height:4px;background:#e0e0e0;border-radius:2px;margin:8px auto 12px"></div>
+  <button class="mobile-menu-item" onclick="mobileGo('inventura')">
+    <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    Hromadná inventura
+  </button>
+  <button class="mobile-menu-item" onclick="mobileGo('pohyby')">
+    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Historie pohybů
+  </button>
+  <button class="mobile-menu-item" onclick="mobileGo('hodnota')">
+    <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    Hodnota skladu
+  </button>
+  <button class="mobile-menu-item" onclick="mobileGo('skener')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="1"/><line x1="7" y1="7" x2="7" y2="17"/><line x1="11" y1="7" x2="11" y2="17"/><line x1="15" y1="7" x2="15" y2="17"/></svg>
+    Skenovat EAN
+  </button>
+  <button class="mobile-menu-item" onclick="mobileGo('sprava')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+    Správa produktů
+  </button>
+  <button class="mobile-menu-item" onclick="mobileGo('qr')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5"/><rect x="16" y="3" width="5" height="5"/><rect x="3" y="16" width="5" height="5"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/></svg>
+    QR kód
+  </button>
+  <button class="mobile-menu-item" onclick="exportCsv();closeMobileMenu()">
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Export CSV
+  </button>
+</div>
+
+<!-- POHYB MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Pohyb</div>
+    <div class="modal-sub" id="modalSub"></div>
+    <input class="modal-input" id="modalInput" type="number" min="1" placeholder="0">
+    <input class="modal-poznamka" id="modalPoznamka" type="text" placeholder="Poznámka (volitelné)" style="display:none">
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeModal()">Zrušit</button>
+      <button class="modal-btn confirm" onclick="confirmModal()">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModalOverlay">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-title" id="editModalTitle">Přidat produkt</div>
+    <div style="margin-top:12px">
+      <div class="form-group"><label class="form-label">Název *</label><input class="form-input" id="ef_nazev" placeholder="Název produktu"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Kategorie</label>
+          <select class="form-select" id="ef_kategorie">
+            <option>Hygiena</option><option>Bělení</option><option>Dezinfekce</option>
+            <option>Kompozita</option><option>Endodontický materiál</option>
+            <option>Lepící systémy</option><option>Nástroje</option><option>Přístroje</option>
+            <option>Spotřební materiál</option><option>Otiskovací materiál</option>
+            <option>BTK a servis</option><option>Ostatní</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Dodavatel</label><input class="form-input" id="ef_dodavatel" placeholder="Dentamed, Henry Schein..."></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Ks v balení</label><input class="form-input" id="ef_ksVBaleni" type="number" min="1" value="1"></div>
+        <div class="form-group"><label class="form-label">Minimum (ks)</label><input class="form-input" id="ef_minimum" type="number" min="0" value="1"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Optimum (ks)</label><input class="form-input" id="ef_optimum" type="number" min="0" value="2"></div>
+        <div class="form-group"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Umístění</label><input class="form-input" id="ef_umisteni" placeholder="Šuplík A2..."></div>
+        <div class="form-group"><label class="form-label">Typ sledování</label>
+          <select class="form-select" id="ef_typ"><option value="inventurní">Inventurní</option><option value="sledovaný">Sledovaný</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Poznámka</label><input class="form-input" id="ef_poznamka_edit" placeholder="Volitelná poznámka"></div>
+    </div>
+    <div class="modal-btns" style="margin-top:16px">
+      <button class="modal-btn cancel" onclick="closeEditModal()">Zrušit</button>
+      <button class="modal-btn confirm" onclick="saveProdukt()">Uložit</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
+<script>
+let allProducts = [];
+let currentProduct = null;
+let editingRow = null;
+let modalCallback = null;
+let wizardQueue = [];
+let wizardIndex = 0;
+let searchTimeout = null;
+let spravaTimeout = null;
+
+// ── AUTH / BACKEND ────────────────────────────────────
+const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbxXsWI9dN4jTP4OgWjZt65wYk7Ffx_kucpRP_QhDMpNFlpBMvQuyVfb3uexUAH_dxfB/exec';
+
+function getPin() {
+  return sessionStorage.getItem('skladPin') || '';
+}
+
+function zobrazPinObrazovku(chyba, vycistitPin) {
+  if (vycistitPin) sessionStorage.removeItem('skladPin');
+  document.getElementById('appRoot').style.display = 'none';
+  document.getElementById('pinScreen').style.display = 'flex';
+  const errEl = document.getElementById('pinError');
+  if (chyba) { errEl.textContent = chyba; errEl.style.display = 'block'; }
+  else { errEl.style.display = 'none'; }
+}
+
+function prihlasitPin() {
+  const pin = document.getElementById('pinInput').value.trim();
+  if (!pin) return;
+  sessionStorage.setItem('skladPin', pin);
+  startApp();
+}
+
+function startApp() {
+  loadData(function() {
+    document.getElementById('pinScreen').style.display = 'none';
+    document.getElementById('appRoot').style.display = 'flex';
+    initSearch();
+  });
+}
+
+function callBackend(action, params) {
+  const payload = Object.assign({}, params || {}, { action: action, pin: getPin() });
+  return fetch(BACKEND_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(result) {
+      if (result && result.error === 'Neplatný PIN') {
+        zobrazPinObrazovku('Neplatný PIN, zkus to znovu.', true);
+        throw new Error('Neplatný PIN');
+      }
+      if (result && result.error === 'Příliš mnoho pokusů. Sklad je uzamčený, kontaktuj správce.') {
+        zobrazPinObrazovku(result.error, false);
+        throw new Error(result.error);
+      }
+      if (result && result.error) throw new Error(result.error);
+      return result;
+    });
+}
+
+// ── DATA ──────────────────────────────────────────────
+function loadData(callback) {
+  callBackend('getSkladData')
+    .then(function(data) {
+      allProducts = data;
+      updateStats();
+      renderPrehled();
+      renderAlerty();
+      renderSprava('');
+      renderSearchResults(document.getElementById('searchInput').value.trim());
+      loadPrehledPohyby();
+      if (callback) callback();
+    })
+    .catch(function(e) {
+      document.getElementById('prehledSub').textContent = 'Chyba: ' + e.message;
+    });
+}
+
+function afterUpdate() {
+  loadData(function() {
+    if (currentProduct) {
+      const fresh = allProducts.find(x => x.row === currentProduct.row);
+      if (fresh) { currentProduct = fresh; renderDetailPanel(fresh); }
+    }
+    // Pokud je aktivní obrazovka nákupní seznam, překresli ji
+    if (document.getElementById('screen-nakup').classList.contains('active')) {
+      renderNakup();
+    }
+  });
+  loadPrehledPohyby();
+}
+
+function loadPrehledPohyby() {
+  callBackend('getPohyby', { limit: 5 })
+    .then(function(data) {
+      const el = document.getElementById('prehledPohyby');
+      if (!el) return;
+      if (!data || !data.length) { el.innerHTML = '<div class="empty" style="padding:16px">Zatím žádné pohyby</div>'; return; }
+      el.innerHTML = data.slice(0,5).map(r => {
+        const c = r.zmena > 0 ? '#1D9E75' : '#E24B4A';
+        const t = r.zmena > 0 ? '+'+r.zmena : r.zmena;
+        return `<div class="alert-row">
+          <div class="alert-info">
+            <div class="alert-name">${r.produkt}</div>
+            <div class="alert-detail">${r.datum} ${r.cas} · ${r.typ}</div>
+          </div>
+          <span style="font-size:13px;font-weight:600;color:${c}">${t} ks</span>
+        </div>`;
+      }).join('');
+    })
+    .catch(function(e) { console.error(e); });
+}
+
+function loadPohyby() {
+  document.getElementById('pohybyBody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#888">Načítám...</td></tr>';
+  callBackend('getPohyby', { limit: 100 })
+    .then(renderPohyby)
+    .catch(function(e){ console.error(e); });
+}
+
+// ── STATS ─────────────────────────────────────────────
+function updateStats() {
+  const total = allProducts.length;
+  const sestavem = allProducts.filter(p => p.mnozstvi !== null).length;
+  const kriticky = allProducts.filter(p => p.alert === 'kriticky').length;
+  const nizky = allProducts.filter(p => p.alert === 'nizky').length;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statSestavem').textContent = sestavem;
+  document.getElementById('statKriticky').textContent = kriticky;
+  document.getElementById('statNizky').textContent = nizky;
+  document.getElementById('prehledSub').textContent = (kriticky+nizky) > 0 ? (kriticky+nizky)+' položek vyžaduje pozornost' : 'Vše v pořádku';
+}
+
+// ── PŘEHLED ───────────────────────────────────────────
+function renderPrehled() {
+  const kriticky = allProducts.filter(p => p.alert === 'kriticky');
+  const nizky = allProducts.filter(p => p.alert === 'nizky');
+  document.getElementById('prehledKriticky').innerHTML = kriticky.length
+    ? kriticky.slice(0,8).map(p => alertRowHtml(p,'red')).join('')
+    : '<div class="empty" style="padding:16px">Žádné kritické položky</div>';
+  document.getElementById('prehledNizky').innerHTML = nizky.length
+    ? nizky.slice(0,8).map(p => alertRowHtml(p,'amber')).join('')
+    : '<div class="empty" style="padding:16px">Vše nad minimem</div>';
+  loadExpirace();
+}
+
+function alertRowHtml(p, color) {
+  const ks = p.mnozstvi !== null ? p.mnozstvi : '?';
+  return `<div class="alert-row" onclick="openDetail(${p.row})">
+    <div class="alert-dot ${color}"></div>
+    <div class="alert-info">
+      <div class="alert-name">${p.nazev}</div>
+      <div class="alert-detail">${p.kategorie} · ${p.dodavatel||'—'}</div>
+    </div>
+    <div class="alert-badge"><span class="badge ${color==='red'?'badge-zero':'badge-low'}">${ks} ks</span></div>
+  </div>`;
+}
+
+// ── EXPIRACE ──────────────────────────────────────────
+function loadExpirace() {
+  callBackend('getExpiracniAlerty')
+    .then(renderExpirace)
+    .catch(function(e){ console.error(e); });
+}
+
+function renderExpirace(data) {
+  let html = '';
+  if (!data.length) {
+    html = '<div class="empty" style="padding:20px">Žádné expirující produkty 👍</div>';
+  } else {
+    const expirováno = data.filter(p => p.uroven === 'expirováno');
+    const do30 = data.filter(p => p.uroven === 'do30');
+    const do90 = data.filter(p => p.uroven === 'do90');
+    if (expirováno.length) {
+      html += '<div style="padding:8px 16px 4px;font-size:11px;font-weight:600;color:#A32D2D;text-transform:uppercase;letter-spacing:.05em">Expirováno</div>';
+      html += expirováno.map(p => expiraceRowHtml(p)).join('');
+    }
+    if (do30.length) {
+      html += '<div style="padding:8px 16px 4px;font-size:11px;font-weight:600;color:#854F0B;text-transform:uppercase;letter-spacing:.05em">Vyprší do 30 dní</div>';
+      html += do30.map(p => expiraceRowHtml(p)).join('');
+    }
+    if (do90.length) {
+      html += '<div style="padding:8px 16px 4pt;font-size:11px;font-weight:600;color:#444;text-transform:uppercase;letter-spacing:.05em">Vyprší do 90 dní</div>';
+      html += do90.map(p => expiraceRowHtml(p)).join('');
+    }
+  }
+  ['alertyExpirace','prehledExpirace'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  });
+}
+
+function expiraceRowHtml(p) {
+  const barva = p.uroven === 'expirováno' ? 'red' : 'amber';
+  const badge = p.uroven === 'expirováno' ? 'badge-zero' : 'badge-low';
+  return `<div class="alert-row" onclick="openDetail(${p.row})">
+    <div class="alert-dot ${barva}"></div>
+    <div class="alert-info">
+      <div class="alert-name">${p.nazev}</div>
+      <div class="alert-detail">${p.kategorie} · ${p.mnozstvi} ks na skladě</div>
+    </div>
+    <div class="alert-badge"><span class="badge ${badge}">${p.expirace}</span></div>
+  </div>`;
+}
+
+// ── ALERTY ────────────────────────────────────────────
+function renderAlerty() {
+  const kriticky = allProducts.filter(p => p.alert === 'kriticky');
+  const nizky = allProducts.filter(p => p.alert === 'nizky');
+  document.getElementById('alertyKriticky').innerHTML = kriticky.length
+    ? kriticky.map(p => alertRowHtml(p,'red')).join('')
+    : '<div class="empty" style="padding:20px">Žádné kritické položky 👍</div>';
+  document.getElementById('alertyNizky').innerHTML = nizky.length
+    ? nizky.map(p => alertRowHtml(p,'amber')).join('')
+    : '<div class="empty" style="padding:20px">Vše nad minimem 👍</div>';
+}
+
+// ── SEARCH ────────────────────────────────────────────
+function initSearch() {
+  document.getElementById('searchInput').addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => renderSearchResults(this.value.trim()), 200);
+  });
+  renderSearchResults('');
+}
+
+function renderSearchResults(query) {
+  const q = (query||'').toLowerCase();
+  const results = q
+    ? allProducts.filter(p =>
+        p.nazev.toLowerCase().includes(q) ||
+        (p.kategorie && p.kategorie.toLowerCase().includes(q)) ||
+        (p.dodavatel && p.dodavatel.toLowerCase().includes(q)) ||
+        (p.umisteni && p.umisteni.toLowerCase().includes(q))
+      ).slice(0,50)
+    : allProducts.slice(0,80);
+  const meta = document.getElementById('searchMeta');
+  if (meta) meta.textContent = q ? results.length+' výsledků' : allProducts.length+' produktů celkem';
+  const tbody = document.getElementById('searchBody');
+  if (!tbody) return;
+  tbody.innerHTML = results.map(p => {
+    const ks = p.mnozstvi !== null ? p.mnozstvi : null;
+    const bc = p.alert==='kriticky' ? 'badge-zero' : p.alert==='nizky' ? 'badge-low' : ks!==null ? 'badge-ok' : 'badge-empty';
+    const bt = ks !== null ? ks+' ks' : '– ks';
+    return `<tr onclick="openDetail(${p.row})">
+      <td><div class="td-name">${p.nazev}</div><div class="td-sub">${p.dodavatel||''}</div></td>
+      <td>${p.kategorie||'—'}</td>
+      <td>${p.dodavatel||'—'}</td>
+      <td>${p.umisteni||'—'}</td>
+      <td><span class="badge ${bc}">${bt}</span></td>
+      <td>${p.minimum||'—'} ks</td>
+      <td>${p.optimum||'—'} ks</td>
+      <td><span class="badge ${p.typ==='sledovaný'?'badge-sledovany':'badge-inventurni'}">${p.typ||'—'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── DETAIL ────────────────────────────────────────────
+function openDetail(rowIndex) {
+  const p = allProducts.find(x => x.row === rowIndex);
+  if (!p) return;
+  currentProduct = p;
+  document.getElementById('detailPanelTitle').textContent = p.nazev;
+  renderDetailPanel(p);
+  document.getElementById('detailOverlay').classList.add('open');
+}
+
+function closeDetail() {
+  document.getElementById('detailOverlay').classList.remove('open');
+  currentProduct = null;
+}
+
+function renderDetailPanel(p) {
+  const ks = p.mnozstvi !== null ? p.mnozstvi : 0;
+  const bal = p.ksVBaleni > 1 ? Math.floor(ks / p.ksVBaleni) : null;
+  const qc = p.alert==='kriticky' ? 'zero' : p.alert==='nizky' ? 'low' : 'ok';
+  document.getElementById('detailPanelBody').innerHTML = `
+    <div class="detail-qty">
+      <div class="detail-qty-num ${qc}">${p.mnozstvi !== null ? ks : '?'}<span id="savingIndicator"></span></div>
+      <div class="detail-qty-label">kusů na skladě${bal !== null ? ' · '+bal+' balení' : ''}</div>
+      ${p.minimum ? `<div class="detail-qty-label" style="font-size:11px;margin-top:2px">min. ${p.minimum} ks</div>` : ''}
+    </div>
+    <div class="detail-actions">
+      <button class="detail-action-btn btn-prijem" onclick="openPohybModal('příjem')">+ Příjem<br><span style="font-size:11px;font-weight:400">${p.ksVBaleni} ks</span></button>
+      <button class="detail-action-btn btn-vydej" onclick="openPohybModal('výdej')">− Výdej<br><span style="font-size:11px;font-weight:400">${p.ksVBaleni} ks</span></button>
+      <button class="detail-action-btn btn-odpis" onclick="openPohybModal('odpis')">🗑 Odpis<br><span style="font-size:11px;font-weight:400">expir./ztráta</span></button>
+      <button class="detail-action-btn btn-inventura-small" onclick="openInventuraModal()">📋 Zadat skutečný stav</button>
+    </div>
+    <div class="detail-fields">
+      ${df('Minimum',p.minimum+' ks')}
+      ${df('Optimum',p.optimum+' ks')}
+      ${df('Kategorie',p.kategorie)}
+      ${df('Dodavatel',p.dodavatel)}
+      ${df('Umístění',p.umisteni||'—')}
+      ${p.expirace ? df('Expirace',p.expirace) : ''}
+      ${p.cenaBal ? df('Cena / balení',Math.round(p.cenaBal)+' Kč') : ''}
+      ${df('Ks v balení',p.ksVBaleni+' ks')}
+      ${df('Typ',p.typ)}
+      ${p.poznamka ? df('Poznámka',p.poznamka) : ''}
+    </div>
+<button class="btn" style="width:100%;margin-top:8px" onclick="showEditModal(${p.row})">Upravit produkt</button>`;
+}
+
+function df(label, val) {
+  return `<div class="detail-field-row"><span class="detail-field-label">${label}</span><span class="detail-field-val">${val||'—'}</span></div>`;
+}
+
+// ── MODALY ────────────────────────────────────────────
+function openPohybModal(typ) {
+  if (!currentProduct) return;
+  const jeVydej = (typ === 'výdej' || typ === 'odpis');
+  const labels = {'příjem':'Příjem na sklad','výdej':'Výdej ze skladu','odpis':'Odpis (expirováno / ztráta)'};
+  document.getElementById('modalTitle').textContent = labels[typ];
+  document.getElementById('modalSub').textContent = currentProduct.nazev + ' · aktuálně: ' + (currentProduct.mnozstvi !== null ? currentProduct.mnozstvi+' ks' : 'nezadáno');
+  document.getElementById('modalInput').value = currentProduct.ksVBaleni;
+  document.getElementById('modalInput').min = 1;
+  const pozEl = document.getElementById('modalPoznamka');
+  pozEl.style.display = 'block';
+  pozEl.placeholder = typ === 'odpis' ? 'Důvod odpisu...' : 'Poznámka (volitelné)';
+  pozEl.value = '';
+  modalCallback = function(pocet) {
+    const zmena = jeVydej ? -pocet : pocet;
+    if (jeVydej && currentProduct.mnozstvi !== null && pocet > currentProduct.mnozstvi) {
+      if (!confirm('Upozornění: odebíráš '+pocet+' ks ale na skladě je jen '+currentProduct.mnozstvi+' ks. Pokračovat?')) return;
+    }
+    const poznamka = document.getElementById('modalPoznamka').value || '';
+    const radek = currentProduct.row;
+    const puvodniMnozstvi = currentProduct.mnozstvi;
+    const odhadovaneNoveMnozstvi = Math.max(0, (puvodniMnozstvi || 0) + zmena);
+
+    // OKAMŽITĚ aktualizuj UI (optimisticky)
+    rychlaAktualizace(radek, odhadovaneNoveMnozstvi);
+    showSaving();
+
+    // Na pozadí zapiš na server
+    callBackend('updateMnozstvi', { rowIndex: radek, zmena: zmena, typ: typ, poznamka: poznamka })
+      .then(function(res) {
+        hideSaving();
+        // Pokud server vrátil jinou hodnotu než odhad, oprav
+        if (res.noveMnozstvi !== odhadovaneNoveMnozstvi) {
+          rychlaAktualizace(radek, res.noveMnozstvi);
+        }
+      })
+      .catch(function(e){
+        hideSaving();
+        alert('Chyba při ukládání: ' + e.message + ' — vrácena původní hodnota.');
+        rychlaAktualizace(radek, puvodniMnozstvi);
+      });
+  };
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('modalInput').focus(), 100);
+}
+
+function openInventuraModal() {
+  if (!currentProduct) return;
+  document.getElementById('modalTitle').textContent = 'Zadat skutečný stav';
+  document.getElementById('modalSub').textContent = currentProduct.nazev;
+  document.getElementById('modalInput').value = currentProduct.mnozstvi !== null ? currentProduct.mnozstvi : '';
+  document.getElementById('modalInput').min = 0;
+  document.getElementById('modalPoznamka').style.display = 'none';
+  document.getElementById('modalPoznamka').value = '';
+  modalCallback = function(val) {
+    const radek = currentProduct.row;
+    const puvodniMnozstvi = currentProduct.mnozstvi;
+
+    // OKAMŽITĚ aktualizuj UI
+    rychlaAktualizace(radek, val);
+    showSaving();
+
+    // Na pozadí zapiš na server
+    callBackend('setMnozstvi', { rowIndex: radek, hodnota: val, poznamka: 'ruční inventura' })
+      .then(function(res) {
+        hideSaving();
+        if (res.noveMnozstvi !== val) {
+          rychlaAktualizace(radek, res.noveMnozstvi);
+        }
+      })
+      .catch(function(e){
+        hideSaving();
+        alert('Chyba při ukládání: ' + e.message + ' — vrácena původní hodnota.');
+        rychlaAktualizace(radek, puvodniMnozstvi);
+      });
+  };
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('modalInput').focus(), 100);
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  modalCallback = null;
+}
+
+function confirmModal() {
+  const val = parseInt(document.getElementById('modalInput').value);
+  if (isNaN(val) || val < 0) { alert('Zadej platné číslo'); return; }
+  const cb = modalCallback;
+  modalCallback = null;
+  document.getElementById('modalOverlay').classList.remove('open');
+  if (cb) cb(val);
+}
+
+// ── POHYBY ────────────────────────────────────────────
+function renderPohyby(data) {
+  const tbody = document.getElementById('pohybyBody');
+  if (!data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#888">Žádné pohyby</td></tr>';
+    return;
+  }
+  const tc = t => t==='příjem'?'prijem':t==='výdej'?'vydej':'inventura';
+  tbody.innerHTML = data.map(r => `<tr>
+    <td>${r.datum}</td><td>${r.cas}</td>
+    <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.produkt}</td>
+    <td><span class="pohyb-typ ${tc(r.typ)}">${r.typ}</span></td>
+    <td style="font-weight:600;color:${r.zmena>0?'#1D9E75':'#E24B4A'}">${r.zmena>0?'+'+r.zmena:r.zmena} ks</td>
+    <td>${r.stavPo} ks</td>
+    <td style="color:#888;font-size:12px">${r.poznamka||''}</td>
+  </tr>`).join('');
+}
+
+// ── WIZARD ────────────────────────────────────────────
+function resetWizard() {
+  wizardQueue = allProducts.filter(p => p.typ === 'sledovaný' || p.alert !== 'ok');
+  wizardIndex = 0;
+  renderWizardStep();
+}
+
+function renderWizardStep() {
+  const total = wizardQueue.length;
+  if (!total) { document.getElementById('wizardContent').innerHTML = '<div class="empty" style="padding:40px">Žádné produkty k inventuře</div>'; return; }
+  if (wizardIndex >= total) {
+    document.getElementById('wizardBar').style.width = '100%';
+    document.getElementById('wizardContent').innerHTML = `<div class="wizard-card" style="text-align:center">
+      <div style="font-size:40px;margin-bottom:12px">✓</div>
+      <div class="wizard-nazev">Inventura dokončena!</div>
+      <div class="wizard-sub">Prošel jsi ${total} produktů.</div>
+      <button class="btn btn-primary" style="margin-top:16px" onclick="showScreen('prehled')">Zpět na přehled</button>
+    </div>`;
+    loadData();
+    return;
+  }
+  const p = wizardQueue[wizardIndex];
+  const pct = Math.round((wizardIndex / total) * 100);
+  document.getElementById('wizardBar').style.width = pct + '%';
+  document.getElementById('wizardMeta').textContent = (wizardIndex+1)+' / '+total+' produktů';
+  document.getElementById('wizardContent').innerHTML = `
+    <div class="wizard-card">
+      <div class="wizard-nazev">${p.nazev}</div>
+      <div class="wizard-sub">${p.kategorie} · ${p.dodavatel||''} · ${p.umisteni||'umístění nezadáno'}</div>
+      <div style="text-align:center;margin-bottom:8px;font-size:13px;color:#888">Aktuální stav: <strong>${p.mnozstvi!==null?p.mnozstvi+' ks':'nezadáno'}</strong> · min. ${p.minimum} ks</div>
+      <input class="wizard-input-big" id="wizardInput" type="number" min="0" placeholder="${p.mnozstvi!==null?p.mnozstvi:'0'}">
+      <div class="wizard-actions">
+        <button class="wizard-skip" onclick="wizardSkip()">Přeskočit</button>
+        <button class="wizard-next" onclick="wizardNext()">Uložit a další →</button>
+      </div>
+    </div>`;
+  setTimeout(() => { const i = document.getElementById('wizardInput'); if(i) i.focus(); }, 100);
+}
+
+function wizardNext() {
+  const inp = document.getElementById('wizardInput');
+  const val = inp ? parseInt(inp.value) : NaN;
+  if (isNaN(val) || val < 0) { wizardSkip(); return; }
+  const p = wizardQueue[wizardIndex];
+  callBackend('setMnozstvi', { rowIndex: p.row, hodnota: val, poznamka: 'hromadná inventura' })
+    .then(function(res) { p.mnozstvi = res.noveMnozstvi; recalcAlert(p); updateStats(); })
+    .catch(function(e) { console.error(e); });
+  wizardIndex++;
+  renderWizardStep();
+}
+
+function wizardSkip() { wizardIndex++; renderWizardStep(); }
+
+// ── SPRÁVA ────────────────────────────────────────────
+function renderSprava(query) {
+  const q = (query||'').toLowerCase();
+  const results = q ? allProducts.filter(p => p.nazev.toLowerCase().includes(q)).slice(0,60) : allProducts.slice(0,60);
+  document.getElementById('spravaBody').innerHTML = results.map(p => `<tr>
+    <td><div class="td-name">${p.nazev}</div></td>
+    <td>${p.kategorie||'—'}</td>
+    <td>${p.ksVBaleni}</td>
+    <td>${p.minimum} ks</td>
+    <td>${p.umisteni||'—'}</td>
+    <td><span class="badge ${p.typ==='sledovaný'?'badge-sledovany':'badge-inventurni'}">${p.typ}</span></td>
+    <td><button class="btn" style="padding:5px 10px;font-size:12px" onclick="showEditModal(${p.row})">Upravit</button></td>
+  </tr>`).join('');
+}
+
+document.getElementById('spravaSearch').addEventListener('input', function() {
+  clearTimeout(spravaTimeout);
+  spravaTimeout = setTimeout(() => renderSprava(this.value.trim()), 200);
+});
+
+// ── EDIT MODAL ────────────────────────────────────────
+function showAddModal() {
+  editingRow = null;
+  document.getElementById('editModalTitle').textContent = 'Přidat produkt';
+  ['nazev','dodavatel','umisteni','poznamka_edit'].forEach(f => document.getElementById('ef_'+f).value = '');
+  document.getElementById('ef_ksVBaleni').value = 1;
+  document.getElementById('ef_minimum').value = 1;
+  document.getElementById('ef_optimum').value = 2;
+  document.getElementById('ef_typ').value = 'inventurní';
+  document.getElementById('editModalOverlay').classList.add('open');
+}
+
+function showEditModal(rowIndex) {
+  const p = allProducts.find(x => x.row === rowIndex);
+  if (!p) return;
+  editingRow = rowIndex;
+  document.getElementById('editModalTitle').textContent = 'Upravit produkt';
+  document.getElementById('ef_nazev').value = p.nazev;
+  document.getElementById('ef_kategorie').value = p.kategorie || 'Spotřební materiál';
+  document.getElementById('ef_dodavatel').value = p.dodavatel || '';
+  document.getElementById('ef_ksVBaleni').value = p.ksVBaleni;
+  document.getElementById('ef_minimum').value = p.minimum;
+  document.getElementById('ef_optimum').value = p.optimum;
+  document.getElementById('ef_umisteni').value = p.umisteni || '';
+  document.getElementById('ef_typ').value = p.typ || 'inventurní';
+  document.getElementById('ef_poznamka_edit').value = p.poznamka || '';
+  document.getElementById('editModalOverlay').classList.add('open');
+}
+
+function closeEditModal() { document.getElementById('editModalOverlay').classList.remove('open'); editingRow = null; }
+
+function saveProdukt() {
+  const nazev = document.getElementById('ef_nazev').value.trim();
+  if (!nazev) { alert('Zadej název produktu'); return; }
+  const data = {
+    nazev, kategorie: document.getElementById('ef_kategorie').value,
+    dodavatel: document.getElementById('ef_dodavatel').value,
+    ksVBaleni: parseInt(document.getElementById('ef_ksVBaleni').value) || 1,
+    minimum: parseInt(document.getElementById('ef_minimum').value) || 1,
+    optimum: parseInt(document.getElementById('ef_optimum').value) || 2,
+    umisteni: document.getElementById('ef_umisteni').value,
+    typ: document.getElementById('ef_typ').value,
+    poznamka: document.getElementById('ef_poznamka_edit').value
+  };
+  const rowToUpdate = editingRow; // ulož PŘED zavřením modalu
+  closeEditModal();
+  if (rowToUpdate) {
+    callBackend('updateProdukt', { rowIndex: rowToUpdate, data: data })
+      .then(function() {
+        const p = allProducts.find(x => x.row === rowToUpdate);
+        if (p) {
+          Object.assign(p, data);
+          recalcAlert(p);
+          if (currentProduct && currentProduct.row === rowToUpdate) renderDetailPanel(p);
+        }
+        updateStats();
+        renderPrehled();
+        renderAlerty();
+        renderSprava(document.getElementById('spravaSearch').value.trim());
+        renderSearchResults(document.getElementById('searchInput').value.trim());
+      })
+      .catch(function(e) { alert('Chyba: ' + e.message); });
+  } else {
+    callBackend('pridatProdukt', { data: data })
+      .then(function() { loadData(); })
+      .catch(function(e) { alert('Chyba: ' + e.message); });
+  }
+}
+
+// ── EXPORT ────────────────────────────────────────────
+function exportCsv() {
+  callBackend('exportSkladCsv')
+    .then(function(csv) {
+      const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'sklad_export.csv'; a.click();
+      URL.revokeObjectURL(url);
+    })
+    .catch(function(e) { alert('Chyba: ' + e.message); });
+}
+
+// ── QR ────────────────────────────────────────────────
+function renderQr() {
+  const url = window.location.href.split('#')[0].split('?')[0];
+  document.getElementById('qrUrl').textContent = url;
+  const qrImgUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(url);
+  document.getElementById('qrcode').innerHTML = `<img src="${qrImgUrl}" width="200" height="200" style="border-radius:8px">`;
+}
+
+// ── NAVIGATION ────────────────────────────────────────
+function showScreen(name) {
+  // Zastav kameru pokud opouštíme skener
+  if (skenerAktivni || (document.getElementById('skenerVideo') && document.getElementById('skenerVideo').style.display === 'block')) {
+    if (name !== 'skener') zastavitSkener();
+  }
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item, .mobile-nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  const sn = document.getElementById('snav-'+name);
+  const mn = document.getElementById('mnav-'+name);
+  if (sn) sn.classList.add('active');
+  if (mn) mn.classList.add('active');
+  if (name === 'pohyby') loadPohyby();
+  if (name === 'nakup') renderNakup();
+  if (name === 'qr') renderQr();
+  if (name === 'inventura' && wizardQueue.length === 0) resetWizard();
+  if (name === 'hodnota') loadHodnota();
+}
+
+// ── SKENER EAN ────────────────────────────────────────
+let zxingReader = null;
+let skenerAktivni = false;
+
+function spustitSkener() {
+  document.getElementById('skenerPlaceholder').style.display = 'none';
+  document.getElementById('skenerVideo').style.display = 'block';
+  document.getElementById('skenerOverlay').style.display = 'block';
+  document.getElementById('skenerVysledek').innerHTML = '';
+
+  if (!zxingReader) {
+    zxingReader = new ZXing.BrowserMultiFormatReader();
+  }
+
+  skenerAktivni = true;
+  document.getElementById('skenerSub').textContent = 'Hledám kód...';
+
+  zxingReader.decodeFromVideoDevice(null, 'skenerVideo', function(result, err) {
+    if (result && skenerAktivni) {
+      const ean = result.getText();
+      zpracujNaskenovanyEAN(ean);
+    }
+  }).catch(function(err) {
+    document.getElementById('skenerSub').textContent = 'Chyba přístupu ke kameře: ' + err.message;
+  });
+}
+
+function zastavitSkener() {
+  skenerAktivni = false;
+  if (zxingReader) {
+    zxingReader.reset();
+  }
+  document.getElementById('skenerVideo').style.display = 'none';
+  document.getElementById('skenerOverlay').style.display = 'none';
+  document.getElementById('skenerPlaceholder').style.display = 'block';
+  document.getElementById('skenerSub').textContent = 'Namiř kameru na čárový kód';
+}
+
+function zpracujNaskenovanyEAN(ean) {
+  skenerAktivni = false; // dočasně pauza ať to nečte opakovaně
+  document.getElementById('skenerSub').textContent = 'Naskenováno: ' + ean;
+
+  callBackend('najdiProduktPodleEAN', { ean: ean })
+    .then(function(res) {
+      if (res.nalezeno) {
+        zobrazNalezenyProdukt(res.row, res.nazev, ean);
+      } else {
+        zobrazNeznamyEAN(ean);
+      }
+    })
+    .catch(function(e) {
+      document.getElementById('skenerVysledek').innerHTML = '<div class="empty">Chyba: ' + e.message + '</div>';
+      skenerAktivni = true;
+    });
+}
+
+function zobrazNalezenyProdukt(row, nazev, ean) {
+  document.getElementById('skenerVysledek').innerHTML = `
+    <div class="content-card full" style="padding:20px;text-align:center">
+      <div style="font-size:32px;margin-bottom:8px">✓</div>
+      <div style="font-size:16px;font-weight:600;margin-bottom:4px">${nazev}</div>
+      <div style="font-size:12px;color:#888;margin-bottom:16px">EAN: ${ean}</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="otevriZeSkeneru(${row})">Otevřít produkt</button>
+        <button class="btn" style="flex:1;justify-content:center" onclick="pokracovatSkenovani()">Skenovat další</button>
+      </div>
+    </div>`;
+}
+
+function zobrazNeznamyEAN(ean) {
+  document.getElementById('skenerVysledek').innerHTML = `
+    <div class="content-card full" style="padding:20px">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:32px;margin-bottom:8px">❓</div>
+        <div style="font-size:14px;font-weight:600">Neznámý EAN kód</div>
+        <div style="font-size:12px;color:#888;margin-top:4px">EAN: ${ean}</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Přiřadit k produktu</label>
+        <input class="form-input" id="eanSearchInput" placeholder="Hledej produkt podle názvu..." autocomplete="off">
+        <div id="eanSearchResults" style="margin-top:8px;max-height:240px;overflow-y:auto"></div>
+      </div>
+      <button class="btn" style="width:100%;justify-content:center;margin-top:8px" onclick="pokracovatSkenovani()">Zrušit a skenovat další</button>
+    </div>`;
+
+  const input = document.getElementById('eanSearchInput');
+  input.addEventListener('input', function() {
+    const q = this.value.trim().toLowerCase();
+    if (!q) { document.getElementById('eanSearchResults').innerHTML = ''; return; }
+    const results = allProducts.filter(p => p.nazev.toLowerCase().includes(q)).slice(0, 8);
+    document.getElementById('eanSearchResults').innerHTML = results.map(p => `
+      <div class="alert-row" style="cursor:pointer" onclick="priraditEANKProduktu(${p.row}, '${ean}', '${p.nazev.replace(/'/g,"\\'")}')">
+        <div class="alert-info">
+          <div class="alert-name">${p.nazev}</div>
+          <div class="alert-detail">${p.kategorie||''} · ${p.dodavatel||''}</div>
+        </div>
+      </div>`).join('') || '<div class="empty" style="padding:12px">Nic nenalezeno</div>';
+  });
+  setTimeout(() => input.focus(), 100);
+}
+
+function priraditEANKProduktu(row, ean, nazev) {
+  callBackend('prirazEAN', { rowIndex: row, ean: ean })
+    .then(function(res) {
+      if (res.success) {
+        const p = allProducts.find(x => x.row === row);
+        if (p) p.ean = ean;
+        zobrazNalezenyProdukt(row, nazev, ean);
+      } else {
+        alert('Chyba: ' + res.error);
+      }
+    })
+    .catch(function(e) { alert('Chyba: ' + e.message); });
+}
+
+function otevriZeSkeneru(row) {
+  zastavitSkener();
+  openDetail(row);
+}
+
+function pokracovatSkenovani() {
+  document.getElementById('skenerVysledek').innerHTML = '';
+  skenerAktivni = true;
+  document.getElementById('skenerSub').textContent = 'Hledám kód...';
+}
+
+function recalcAlert(p) {
+  if (p.mnozstvi === null) { p.alert = 'neznamy'; return; }
+  if (p.mnozstvi === 0) p.alert = 'kriticky';
+  else if (p.minimum && p.mnozstvi <= p.minimum) p.alert = 'nizky';
+  else p.alert = 'ok';
+}
+
+function showSaving() {
+  const el = document.getElementById('savingIndicator');
+  if (el) el.innerHTML = ' <span class="saving-indicator"><span class="dot"></span>ukládám...</span>';
+}
+
+function hideSaving() {
+  const el = document.getElementById('savingIndicator');
+  if (el) el.innerHTML = '';
+}
+
+function rychlaAktualizace(row, noveMnozstvi) {
+  const p = allProducts.find(x => x.row === row);
+  if (!p) return;
+  p.mnozstvi = noveMnozstvi;
+  recalcAlert(p);
+
+  updateStats();
+  renderPrehled();
+  renderAlerty();
+
+  if (currentProduct && currentProduct.row === row) {
+    currentProduct = p;
+    renderDetailPanel(p);
+  }
+
+  renderSearchResults(document.getElementById('searchInput').value.trim());
+  renderSprava(document.getElementById('spravaSearch').value.trim());
+
+  if (document.getElementById('screen-nakup').classList.contains('active')) {
+    renderNakup();
+  }
+
+  // Pohyby a expirace načti na pozadí, nezdržuj UI
+  loadPrehledPohyby();
+}
+
+function ulozMinOptimum() {
+  if (!currentProduct) return;
+  const minVal = parseInt(document.getElementById('editMinimum').value);
+  const optVal = parseInt(document.getElementById('editOptimum').value);
+  if (isNaN(minVal) || minVal < 0) { alert('Zadej platné minimum'); return; }
+  if (isNaN(optVal) || optVal < minVal) { alert('Optimum musí být alespoň rovno minimu'); return; }
+  callBackend('updateProdukt', { rowIndex: currentProduct.row, data: { minimum: minVal, optimum: optVal } })
+    .then(function() {
+      currentProduct.minimum = minVal;
+      currentProduct.optimum = optVal;
+      recalcAlert(currentProduct);
+      renderDetailPanel(currentProduct);
+      updateStats();
+      renderPrehled();
+      renderAlerty();
+    })
+    .catch(function(e){ alert('Chyba: ' + e.message); });
+}
+
+// ── NÁKUPNÍ SEZNAM ────────────────────────────────────
+function renderNakup() {
+  const potrebuje = allProducts.filter(p =>
+    p.mnozstvi !== null && (p.alert === 'kriticky' || p.alert === 'nizky')
+  );
+
+  if (!potrebuje.length) {
+    document.getElementById('nakupContent').innerHTML = '<div class="empty" style="padding:40px">Není co objednávat 👍</div>';
+    document.getElementById('nakupSub').textContent = 'Vše v pořádku';
+    return;
+  }
+
+  const poDodavateli = {};
+  potrebuje.forEach(p => {
+    const d = p.dodavatel || 'Bez dodavatele';
+    if (!poDodavateli[d]) poDodavateli[d] = [];
+    const chybi = Math.max(0, p.optimum - p.mnozstvi);
+    const baleni = Math.ceil(chybi / p.ksVBaleni);
+    poDodavateli[d].push({ ...p, chybi, baleni });
+  });
+
+  document.getElementById('nakupSub').textContent = potrebuje.length + ' produktů k objednání';
+
+  let html = '';
+  Object.keys(poDodavateli).sort().forEach(dodavatel => {
+    const produkty = poDodavateli[dodavatel];
+    html += `
+      <div class="content-card full" style="margin-bottom:16px">
+        <div class="card-header">
+          <span>${dodavatel}</span>
+          <span style="font-size:12px;color:#888;font-weight:400">${produkty.length} položek</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Název</th><th>Kategorie</th><th>Na skladě</th><th>Minimum</th><th>Chybí</th><th>Objednat</th><th>Priorita</th></tr></thead>
+            <tbody>
+              ${produkty.map(p => `<tr onclick="openDetail(${p.row})" style="cursor:pointer">
+                <td><div class="td-name">${p.nazev}</div></td>
+                <td>${p.kategorie||'—'}</td>
+                <td><span class="badge ${p.alert==='kriticky'?'badge-zero':'badge-low'}">${p.mnozstvi} ks</span></td>
+                <td>${p.minimum} ks</td>
+                <td style="font-weight:500;color:#E24B4A">${p.chybi} ks</td>
+                <td style="font-weight:600;color:#1D9E75">${p.baleni} bal</td>
+                <td><span class="badge ${p.alert==='kriticky'?'badge-zero':'badge-low'}">${p.alert==='kriticky'?'🔴 Kritické':'🟠 Nízký stav'}</span></td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  });
+
+  document.getElementById('nakupContent').innerHTML = html;
+}
+
+function exportNakupCsv() {
+  const potrebuje = allProducts.filter(p =>
+    p.mnozstvi !== null && (p.alert === 'kriticky' || p.alert === 'nizky')
+  );
+  if (!potrebuje.length) { alert('Není co exportovat'); return; }
+
+  const rows = [['Název','Kategorie','Dodavatel','Na skladě','Minimum','Chybí (ks)','Objednat (bal)','Priorita']];
+  potrebuje.forEach(p => {
+    const chybi = Math.max(0, p.optimum - p.mnozstvi);
+    const baleni = Math.ceil(chybi / p.ksVBaleni);
+    rows.push([p.nazev, p.kategorie, p.dodavatel, p.mnozstvi, p.minimum, p.optimum, chybi, baleni, p.alert==='kriticky'?'Kritické':'Nízký stav']);
+  });
+
+  const csv = rows.map(r => r.map(c => {
+    const s = (c||'').toString().replace(/"/g,'""');
+    return s.includes(',') || s.includes('"') ? `"${s}"` : s;
+  }).join(',')).join('\n');
+
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'nakupni_seznam.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function poslaNakupEmailem() {
+  const potrebuje = allProducts.filter(p =>
+    p.mnozstvi !== null && (p.alert === 'kriticky' || p.alert === 'nizky')
+  );
+  if (!potrebuje.length) { alert('Není co posílat'); return; }
+
+  callBackend('poslaNakupEmail', { produkty: potrebuje.map(p => ({
+      nazev: p.nazev,
+      kategorie: p.kategorie,
+      dodavatel: p.dodavatel || 'Neuvedeno',
+      mnozstvi: p.mnozstvi,
+      minimum: p.minimum,
+      optimum: p.optimum,
+      ksVBaleni: p.ksVBaleni,
+      alert: p.alert
+    })) })
+    .then(function() { alert('Email odeslán! ✓'); })
+    .catch(function(e) { alert('Chyba: ' + e.message); });
+}
+
+// ── HODNOTA SKLADU ────────────────────────────────────
+function loadHodnota() {
+  document.getElementById('hodnotaContent').innerHTML = '<div class="empty">Načítám...</div>';
+  callBackend('getHodnotaSkladu')
+    .then(renderHodnota)
+    .catch(function(e){
+      document.getElementById('hodnotaContent').innerHTML = '<div class="empty">Chyba: ' + e.message + '</div>';
+    });
+}
+
+function renderHodnota(data) {
+  const fmt = n => Math.round(n).toLocaleString('cs-CZ') + ' Kč';
+
+  // Seřaď dodavatele a kategorie podle hodnoty
+  const dodavatele = Object.entries(data.poDodavateli).sort((a,b) => b[1]-a[1]);
+  const kategorie = Object.entries(data.poKategorii).sort((a,b) => b[1]-a[1]);
+
+  let html = `
+    <!-- Hlavní číslo -->
+    <div class="content-card full" style="margin-bottom:16px">
+      <div style="padding:32px;text-align:center">
+        <div style="font-size:42px;font-weight:700;color:#1D9E75">${fmt(data.celkem)}</div>
+        <div style="font-size:14px;color:#888;margin-top:8px">celková hodnota skladu · ${data.pocetPolozek} naskladněných produktů</div>
+      </div>
+    </div>
+
+    <div class="content-grid" style="padding:0;margin-bottom:16px">
+      <!-- Podle dodavatele -->
+      <div class="content-card">
+        <div class="card-header">Podle dodavatele</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Dodavatel</th><th style="text-align:right">Hodnota</th><th style="text-align:right">Podíl</th></tr></thead>
+            <tbody>
+              ${dodavatele.map(([d, v]) => `<tr>
+                <td style="font-weight:500">${d}</td>
+                <td style="text-align:right">${fmt(v)}</td>
+                <td style="text-align:right;color:#888">${Math.round(v/data.celkem*100)} %</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Podle kategorie -->
+      <div class="content-card">
+        <div class="card-header">Podle kategorie</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Kategorie</th><th style="text-align:right">Hodnota</th><th style="text-align:right">Podíl</th></tr></thead>
+            <tbody>
+              ${kategorie.map(([k, v]) => `<tr>
+                <td style="font-weight:500">${k}</td>
+                <td style="text-align:right">${fmt(v)}</td>
+                <td style="text-align:right;color:#888">${Math.round(v/data.celkem*100)} %</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('hodnotaContent').innerHTML = html;
+  document.getElementById('hodnotaSub').textContent = 'Aktualizováno ' + new Date().toLocaleTimeString('cs-CZ');
+}
+function toggleMobileMenu() {
+  const overlay = document.getElementById('mobileMenuOverlay');
+  const panel = document.getElementById('mobileMenuPanel');
+  const isOpen = panel.style.display === 'block';
+  overlay.style.display = isOpen ? 'none' : 'block';
+  panel.style.display = isOpen ? 'none' : 'block';
+}
+
+function closeMobileMenu() {
+  document.getElementById('mobileMenuOverlay').style.display = 'none';
+  document.getElementById('mobileMenuPanel').style.display = 'none';
+}
+
+function mobileGo(screen) {
+  closeMobileMenu();
+  showScreen(screen);
+}
+
+// ── INIT ──────────────────────────────────────────────
+document.getElementById('prehledSub').textContent = 'Načítám data...';
+if (getPin()) {
+  startApp();
+} else {
+  document.getElementById('pinScreen').style.display = 'flex';
+}
+
+function initSearch() {
+  document.getElementById('searchInput').addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => renderSearchResults(this.value.trim()), 200);
+  });
+}
+
+</script>
+</body>
+</html>
