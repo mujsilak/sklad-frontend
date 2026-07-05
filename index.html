@@ -1349,6 +1349,12 @@ function rozdelDodavatele(dodavatel) {
   return (dodavatel || 'Bez dodavatele').split(',').map(d => d.trim()).filter(Boolean);
 }
 
+// Odkazy na e-shopy dodavatelů — zobrazí se jednou u nadpisu skupiny
+// v nákupním seznamu, ne u každé položky zvlášť.
+const DODAVATEL_ESHOP = {
+  'Dentamed': 'https://eshop.dentamed.cz'
+};
+
 function renderNakup() {
   const potrebuje = allProducts.filter(p =>
     p.mnozstvi !== null && (p.alert === 'kriticky' || p.alert === 'nizky')
@@ -1375,10 +1381,11 @@ function renderNakup() {
   let html = '';
   Object.keys(poDodavateli).sort().forEach(dodavatel => {
     const produkty = poDodavateli[dodavatel];
+    const eshopUrl = DODAVATEL_ESHOP[dodavatel];
     html += `
       <div class="content-card full" style="margin-bottom:16px">
         <div class="card-header">
-          <span>${dodavatel}</span>
+          <span>${dodavatel}${eshopUrl ? ` · <a href="${eshopUrl}" target="_blank" rel="noopener">e-shop →</a>` : ''}</span>
           <span style="font-size:12px;color:#888;font-weight:400">${produkty.length} položek</span>
         </div>
         <div class="table-wrap">
