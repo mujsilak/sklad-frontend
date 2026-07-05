@@ -561,12 +561,17 @@ let spravaTimeout = null;
 // ── AUTH / BACKEND ────────────────────────────────────
 const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzNu3k9rtrfcpsBO6pnYnNogCtJlY9BM7ZcHAS9KVxccx_3Y4IkV8DYi-gDPlp5Wt5S/exec';
 
+// PIN se pamatuje jen v pameti (ne v sessionStorage) — prezije reload
+// stranky, ale NE zavreni a znovuotevreni appky (na mobilu se sessionStorage
+// nekdy chova jako perzistentni napric otevrenimi, coz je bezpecnostni diera).
+let cachedPin = '';
+
 function getPin() {
-  return sessionStorage.getItem('skladPin') || '';
+  return cachedPin;
 }
 
 function zobrazPinObrazovku(chyba, vycistitPin) {
-  if (vycistitPin) sessionStorage.removeItem('skladPin');
+  if (vycistitPin) cachedPin = '';
   document.getElementById('appRoot').style.display = 'none';
   document.getElementById('pinScreen').style.display = 'flex';
   const errEl = document.getElementById('pinError');
@@ -577,7 +582,7 @@ function zobrazPinObrazovku(chyba, vycistitPin) {
 function prihlasitPin() {
   const pin = document.getElementById('pinInput').value.trim();
   if (!pin) return;
-  sessionStorage.setItem('skladPin', pin);
+  cachedPin = pin;
   startApp();
 }
 
@@ -1529,12 +1534,9 @@ function mobileGo(screen) {
 }
 
 // ── INIT ──────────────────────────────────────────────
+// Vzdy zacit na PIN obrazovce — PIN se nepamatuje mezi otevrenimi appky.
 document.getElementById('prehledSub').textContent = 'Načítám data...';
-if (getPin()) {
-  startApp();
-} else {
-  document.getElementById('pinScreen').style.display = 'flex';
-}
+document.getElementById('pinScreen').style.display = 'flex';
 
 function initSearch() {
   document.getElementById('searchInput').addEventListener('input', function() {
