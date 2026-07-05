@@ -467,7 +467,25 @@ tr:hover td{background:#fafafa;cursor:pointer}
         <div class="content-card full" style="margin-bottom:12px;padding:16px">
           <div style="font-weight:600;margin-bottom:6px">EAN kód</div>
           <div style="font-size:13px;color:#555;line-height:1.6">
-            Čárový kód z krabičky, díky kterému appka pozná produkt při skenování ("Skenovat EAN"). Jeden EAN kód nejde přiřadit ke dvěma různým položkám zároveň.
+            Čárový kód z krabičky, díky kterému appka pozná produkt při skenování ("Skenovat EAN"). Stejný EAN kód může mít i víc položek najednou, pokud jde o **stejný produkt na víc místech** (viz níže) — appka pak po naskenování nabídne výběr, o které místo jde. Zablokuje se jen přiřazení ke dvěma **různým** produktům omylem.
+          </div>
+        </div>
+        <div class="content-card full" style="margin-bottom:12px;padding:16px">
+          <div style="font-weight:600;margin-bottom:6px">Stejný produkt na víc místech</div>
+          <div style="font-size:13px;color:#555;line-height:1.6">
+            Když je produkt naskladněný na víc místech (např. Ordinace 1 i Ordinace 2), založ pro každé místo **samostatnou položku se stejným názvem** — nejsnáz přes tlačítko <strong>"Kopírovat na jiné místo"</strong> v detailu produktu (předvyplní vše kromě Umístění a množství). Alerty (kritický/nízký stav) se pak počítají ze **součtu** přes všechna místa — pokud je na jednom místě 0 ks, ale jinde je zásoby dost, appka to nebere jako problém.
+          </div>
+        </div>
+        <div class="content-card full" style="margin-bottom:12px;padding:16px">
+          <div style="font-weight:600;margin-bottom:6px">Přehled míst</div>
+          <div style="font-size:13px;color:#555;line-height:1.6">
+            Samostatná obrazovka, která ukáže všech 5 skladových míst (Steril 1/2, Ordinace 1/2/DH) a co je na kterém aktuálně naskladněno — hodí se pro rychlou kontrolu konkrétní místnosti.
+          </div>
+        </div>
+        <div class="content-card full" style="margin-bottom:12px;padding:16px">
+          <div style="font-weight:600;margin-bottom:6px">Kdo dělá pohyb (jméno při přihlášení)</div>
+          <div style="font-size:13px;color:#555;line-height:1.6">
+            Před zadáním PINu appka požádá o výběr jména ze seznamu (list "Zaměstnanci" v tabulce — přidávat/mazat jména jde přímo tam, bez úpravy appky). Jméno se pak zapisuje ke každému příjmu/výdeji/inventuře v Historii pohybů, ať je vidět, kdo co udělal.
           </div>
         </div>
         <div class="content-card full" style="margin-bottom:12px;padding:16px">
@@ -1182,8 +1200,62 @@ function renderSprava(query) {
     <td>${p.minimum} ks</td>
     <td>${p.umisteni||'—'}</td>
     <td><span class="badge ${p.typ==='sledovaný'?'badge-sledovany':'badge-inventurni'}">${p.typ}</span></td>
-    <td><button class="btn" style="padding:5px 10px;font-size:12px" onclick="showEditModal(${p.row})">Upravit</button></td>
+    <td style="white-space:nowrap">
+      <button class="btn" style="padding:5px 8px;font-size:14px" onclick="toggleRadkoveMenu(event, ${p.row}, '${p.nazev.replace(/'/g,"\\'")}')">⋮</button>
+    </td>
   </tr>`).join('');
+}
+
+// Plovouci menu s "Upravit"/"Smazat" se pripoji primo do <body> (mimo
+// tabulku), aby ho oriznuti (overflow) tabulky nikdy neschovalo pod hranu.
+function toggleRadkoveMenu(event, rowIndex, nazev) {
+  event.stopPropagation();
+  const existing = document.getElementById('radkove-menu-floating');
+  const bylOtevrenyProTentoRadek = existing && existing.dataset.row == rowIndex;
+  if (existing) existing.remove();
+  if (bylOtevrenyProTentoRadek) return;
+
+  const rect = event.currentTarget.getBoundingClientRect();
+  const menu = document.createElement('div');
+  menu.id = 'radkove-menu-floating';
+  menu.dataset.row = rowIndex;
+  menu.style.cssText = 'position:fixed;top:' + (rect.bottom + 4) + 'px;left:' + Math.max(8, rect.right - 210) + 'px;background:#fff;border:1px solid #eee;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:500;overflow:hidden;min-width:210px';
+
+  const upravitBtn = document.createElement('button');
+  upravitBtn.style.cssText = 'display:block;width:100%;padding:10px 16px;font-size:13px;color:#444;background:none;border:none;cursor:pointer;text-align:left;white-space:nowrap';
+  upravitBtn.textContent = '✏️ Upravit';
+  upravitBtn.onclick = function() { showEditModal(rowIndex); };
+
+  const kopirovatBtn = document.createElement('button');
+  kopirovatBtn.style.cssText = 'display:block;width:100%;padding:10px 16px;font-size:13px;color:#444;background:none;border:none;cursor:pointer;text-align:left;white-space:nowrap;border-top:1px solid #f0f0f0';
+  kopirovatBtn.textContent = '📋 Kopírovat na jiné místo';
+  kopirovatBtn.onclick = function() { kopirovatProdukt(rowIndex); };
+
+  const smazatBtn = document.createElement('button');
+  smazatBtn.style.cssText = 'display:block;width:100%;padding:10px 16px;font-size:13px;color:#E24B4A;background:none;border:none;cursor:pointer;text-align:left;white-space:nowrap;border-top:1px solid #f0f0f0';
+  smazatBtn.textContent = '🗑 Smazat';
+  smazatBtn.onclick = function() { smazatProduktZeSpravy(rowIndex, nazev); };
+
+  menu.appendChild(upravitBtn);
+  menu.appendChild(kopirovatBtn);
+  menu.appendChild(smazatBtn);
+  document.body.appendChild(menu);
+}
+
+document.addEventListener('click', function() {
+  const existing = document.getElementById('radkove-menu-floating');
+  if (existing) existing.remove();
+});
+
+// Trvale smaze produkt ze Skladu (po potvrzeni) a obnovi data.
+function smazatProduktZeSpravy(rowIndex, nazev) {
+  if (!confirm('Opravdu smazat produkt "' + nazev + '"? Tuto akci appka nejde vzít zpět (v historii Google Sheets ano).')) return;
+  callBackend('smazatProdukt', { rowIndex: rowIndex })
+    .then(function(res) {
+      if (res && res.success === false) { alert('Chyba: ' + res.error); return; }
+      loadData();
+    })
+    .catch(function(e) { alert('Chyba: ' + e.message); });
 }
 
 document.getElementById('spravaSearch').addEventListener('input', function() {
