@@ -699,6 +699,22 @@ function nactiZamestnance() {
     });
 }
 
+// Neblokujici upozorneni na chybu (na rozdil od alert() neprerusi praci) —
+// pouzito pro selhani na pozadi, kde uzivatel primo neceka na vysledek.
+function ukazChybu(zprava) {
+  let el = document.getElementById('chybaToast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'chybaToast';
+    el.style.cssText = 'position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#E24B4A;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:400;max-width:90%;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.2)';
+    document.body.appendChild(el);
+  }
+  el.textContent = zprava;
+  el.style.display = 'block';
+  clearTimeout(window.__chybaTimeout);
+  window.__chybaTimeout = setTimeout(function() { el.style.display = 'none'; }, 4000);
+}
+
 function callBackend(action, params) {
   const payload = Object.assign({}, params || {}, { action: action, pin: getPin(), jmeno: getJmeno() });
   return fetch(BACKEND_URL, {
@@ -771,14 +787,17 @@ function loadPrehledPohyby() {
         </div>`;
       }).join('');
     })
-    .catch(function(e) { console.error(e); });
+    .catch(function(e) { console.error(e); ukazChybu('Nepodařilo se načíst poslední pohyby.'); });
 }
 
 function loadPohyby() {
-  document.getElementById('pohybyBody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#888">Načítám...</td></tr>';
+  document.getElementById('pohybyBody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:#888">Načítám...</td></tr>';
   callBackend('getPohyby', { limit: 100 })
     .then(renderPohyby)
-    .catch(function(e){ console.error(e); });
+    .catch(function(e){
+      console.error(e);
+      document.getElementById('pohybyBody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:#E24B4A">Nepodařilo se načíst: ' + e.message + '</td></tr>';
+    });
 }
 
 // ── STATS ─────────────────────────────────────────────
@@ -823,7 +842,7 @@ function alertRowHtml(p, color) {
 function loadExpirace() {
   callBackend('getExpiracniAlerty')
     .then(renderExpirace)
-    .catch(function(e){ console.error(e); });
+    .catch(function(e){ console.error(e); ukazChybu('Nepodařilo se načíst expirace.'); });
 }
 
 function renderExpirace(data) {
@@ -894,7 +913,8 @@ function renderSearchResults(query) {
         p.nazev.toLowerCase().includes(q) ||
         (p.kategorie && p.kategorie.toLowerCase().includes(q)) ||
         (p.dodavatel && p.dodavatel.toLowerCase().includes(q)) ||
-        (p.umisteni && p.umisteni.toLowerCase().includes(q))
+        (p.umisteni && p.umisteni.toLowerCase().includes(q)) ||
+        (p.ean && p.ean.toString().toLowerCase().includes(q))
       ).slice(0,50)
     : allProducts.slice(0,80);
   const meta = document.getElementById('searchMeta');
@@ -1128,7 +1148,7 @@ function wizardNext() {
   const p = wizardQueue[wizardIndex];
   callBackend('setMnozstvi', { rowIndex: p.row, hodnota: val, poznamka: 'hromadná inventura' })
     .then(function(res) { p.mnozstvi = res.noveMnozstvi; recalcAlert(p); updateStats(); })
-    .catch(function(e) { console.error(e); });
+    .catch(function(e) { console.error(e); ukazChybu('Neuložilo se: ' + p.nazev + ' — zkus to znovu přes vyhledávání.'); });
   wizardIndex++;
   renderWizardStep();
 }
@@ -1327,16 +1347,48 @@ function zpracujNaskenovanyEAN(ean) {
 }
 
 function zobrazNalezenyProdukt(row, nazev, ean) {
+  const p = allProducts.find(x => x.row === row);
+  const stavText = p && p.mnozstvi !== null ? ` · aktuálně ${p.mnozstvi} ks` : '';
   document.getElementById('skenerVysledek').innerHTML = `
     <div class="content-card full" style="padding:20px;text-align:center">
       <div style="font-size:32px;margin-bottom:8px">✓</div>
       <div style="font-size:16px;font-weight:600;margin-bottom:4px">${nazev}</div>
-      <div style="font-size:12px;color:#888;margin-bottom:16px">EAN: ${ean}</div>
+      <div style="font-size:12px;color:#888;margin-bottom:16px">EAN: ${ean}${stavText}</div>
+      <button class="btn" style="width:100%;justify-content:center;background:#FAECE7;color:#993C1D;border-color:#F5C4B3;margin-bottom:8px" onclick="rychlyVydejZeSkeneru(${row})">− Vydat 1 ks</button>
       <div style="display:flex;gap:8px">
         <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="otevriZeSkeneru(${row})">Otevřít produkt</button>
         <button class="btn" style="flex:1;justify-content:center" onclick="pokracovatSkenovani()">Skenovat další</button>
       </div>
     </div>`;
+}
+
+// Rychly vydej 1 ks primo z vysledku skenovani — pro sestricku u kresla,
+// ktera nema cas otevirat detail produktu. Pro jine mnozstvi/prijem/odpis
+// pouzij "Otevřít produkt".
+function rychlyVydejZeSkeneru(row) {
+  const p = allProducts.find(x => x.row === row);
+  if (!p) return;
+  const puvodniMnozstvi = p.mnozstvi;
+  const odhad = Math.max(0, (puvodniMnozstvi || 0) - 1);
+
+  rychlaAktualizace(row, odhad);
+  document.getElementById('skenerVysledek').innerHTML = '<div class="content-card full" style="padding:20px;text-align:center"><div class="spinner" style="margin:0 auto 12px"></div>Vydávám...</div>';
+
+  callBackend('updateMnozstvi', { rowIndex: row, zmena: -1, typ: 'výdej', poznamka: 'rychlý výdej ze skeneru' })
+    .then(function(res) {
+      if (res.noveMnozstvi !== odhad) rychlaAktualizace(row, res.noveMnozstvi);
+      document.getElementById('skenerVysledek').innerHTML = `
+        <div class="content-card full" style="padding:20px;text-align:center">
+          <div style="font-size:32px;margin-bottom:8px">✓</div>
+          <div style="font-size:16px;font-weight:600;margin-bottom:4px">${p.nazev}</div>
+          <div style="font-size:13px;color:#993C1D;margin-bottom:16px">Vydáno 1 ks · nyní ${res.noveMnozstvi} ks</div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="pokracovatSkenovani()">Skenovat další</button>
+        </div>`;
+    })
+    .catch(function(e) {
+      rychlaAktualizace(row, puvodniMnozstvi);
+      document.getElementById('skenerVysledek').innerHTML = '<div class="empty">Chyba: ' + e.message + ' — vrácena původní hodnota.</div>';
+    });
 }
 
 function zobrazNeznamyEAN(ean) {
