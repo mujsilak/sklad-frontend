@@ -1759,10 +1759,48 @@ const DODAVATEL_ESHOP = {
   'Patakovo': 'https://www.patakovo.cz/'
 };
 
+// Slouci produkty se stejnym nazvem (na vic mistech) do jednoho zaznamu —
+// "chybi"/"objednat" se pocita SOUHRNNE za cely produkt (soucet mnozstvi
+// a optima pres vsechna mista), ne zvlast pro kazde misto. Jinak by appka
+// u produktu na 3 mistech navrhla objednat 3x vic, nez je skutecne potreba.
+function sesbiratKObjednani() {
+  const skupiny = {};
+  allProducts.forEach(p => {
+    const key = p.nazev.toLowerCase().trim();
+    if (!skupiny[key]) skupiny[key] = { mnozstviSoucet: 0, minimumSoucet: 0, optimumSoucet: 0, zaznamy: [] };
+    if (p.mnozstvi !== null) skupiny[key].mnozstviSoucet += p.mnozstvi;
+    skupiny[key].minimumSoucet += p.minimum;
+    skupiny[key].optimumSoucet += p.optimum;
+    skupiny[key].zaznamy.push(p);
+  });
+
+  const zpracovano = {};
+  const vysledek = [];
+  allProducts.forEach(p => {
+    if (p.mnozstvi === null || (p.alert !== 'kriticky' && p.alert !== 'nizky')) return;
+    const key = p.nazev.toLowerCase().trim();
+    if (zpracovano[key]) return;
+    zpracovano[key] = true;
+    const s = skupiny[key];
+    const chybi = Math.max(0, s.optimumSoucet - s.mnozstviSoucet);
+    const baleni = Math.ceil(chybi / p.ksVBaleni);
+    const mista = s.zaznamy
+      .map(z => (z.umisteni || 'bez umístění') + ': ' + (z.mnozstvi !== null ? z.mnozstvi : '?') + ' ks')
+      .join(' · ');
+    vysledek.push(Object.assign({}, p, {
+      mnozstvi: s.mnozstviSoucet,
+      minimum: s.minimumSoucet,
+      optimum: s.optimumSoucet,
+      chybi: chybi,
+      baleni: baleni,
+      mista: mista
+    }));
+  });
+  return vysledek;
+}
+
 function renderNakup() {
-  const potrebuje = allProducts.filter(p =>
-    p.mnozstvi !== null && (p.alert === 'kriticky' || p.alert === 'nizky')
-  );
+  const potrebuje = sesbiratKObjednani();
 
   if (!potrebuje.length) {
     document.getElementById('nakupContent').innerHTML = '<div class="empty" style="padding:40px">Není co objednávat 👍</div>';
@@ -1772,11 +1810,9 @@ function renderNakup() {
 
   const poDodavateli = {};
   potrebuje.forEach(p => {
-    const chybi = Math.max(0, p.optimum - p.mnozstvi);
-    const baleni = Math.ceil(chybi / p.ksVBaleni);
     rozdelDodavatele(p.dodavatel).forEach(d => {
       if (!poDodavateli[d]) poDodavateli[d] = [];
-      poDodavateli[d].push({ ...p, chybi, baleni });
+      poDodavateli[d].push(p);
     });
   });
 
@@ -1794,10 +1830,10 @@ function renderNakup() {
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Název</th><th>Kategorie</th><th>Podkategorie</th><th>Na skladě</th><th>Minimum</th><th>Chybí</th><th>Objednat</th><th>Priorita</th></tr></thead>
+            <thead><tr><th>Název</th><th>Kategorie</th><th>Podkategorie</th><th>Na skladě (vše)</th><th>Minimum</th><th>Chybí</th><th>Objednat</th><th>Priorita</th></tr></thead>
             <tbody>
               ${produkty.map(p => `<tr onclick="openDetail(${p.id})" style="cursor:pointer">
-                <td><div class="td-name">${p.nazev}</div></td>
+                <td><div class="td-name">${p.nazev}</div><div class="td-sub">${p.mista}</div></td>
                 <td>${p.kategorie||'—'}</td>
                 <td>${p.podkategorie||'—'}</td>
                 <td><span class="badge ${p.alert==='kriticky'?'badge-zero':'badge-low'}">${p.mnozstvi} ks</span></td>
@@ -1816,17 +1852,13 @@ function renderNakup() {
 }
 
 function exportNakupCsv() {
-  const potrebuje = allProducts.filter(p =>
-    p.mnozstvi !== null && (p.alert === 'kriticky' || p.alert === 'nizky')
-  );
+  const potrebuje = sesbiratKObjednani();
   if (!potrebuje.length) { alert('Není co exportovat'); return; }
 
-  const rows = [['Název','Kategorie','Podkategorie','Dodavatel','Na skladě','Minimum','Optimum','Chybí (ks)','Objednat (bal)','Priorita']];
+  const rows = [['Název','Kategorie','Podkategorie','Dodavatel','Na skladě (vše)','Minimum','Optimum','Chybí (ks)','Objednat (bal)','Priorita','Rozpis po místech']];
   potrebuje.forEach(p => {
-    const chybi = Math.max(0, p.optimum - p.mnozstvi);
-    const baleni = Math.ceil(chybi / p.ksVBaleni);
     rozdelDodavatele(p.dodavatel).forEach(d => {
-      rows.push([p.nazev, p.kategorie, p.podkategorie||'', d, p.mnozstvi, p.minimum, p.optimum, chybi, baleni, p.alert==='kriticky'?'Kritické':'Nízký stav']);
+      rows.push([p.nazev, p.kategorie, p.podkategorie||'', d, p.mnozstvi, p.minimum, p.optimum, p.chybi, p.baleni, p.alert==='kriticky'?'Kritické':'Nízký stav', p.mista]);
     });
   });
 
