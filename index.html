@@ -1083,7 +1083,7 @@ function openPohybModal(typ) {
     const odhadovaneNoveMnozstvi = Math.max(0, (puvodniMnozstvi || 0) + zmena);
 
     // OKAMŽITĚ aktualizuj UI (optimisticky)
-    rychlaAktualizace(radek, odhadovaneNoveMnozstvi);
+    rychlaAktualizace(id, odhadovaneNoveMnozstvi);
     showSaving();
 
     // Na pozadí zapiš na server
@@ -1092,13 +1092,13 @@ function openPohybModal(typ) {
         hideSaving();
         // Pokud server vrátil jinou hodnotu než odhad, oprav
         if (res.noveMnozstvi !== odhadovaneNoveMnozstvi) {
-          rychlaAktualizace(radek, res.noveMnozstvi);
+          rychlaAktualizace(id, res.noveMnozstvi);
         }
       })
       .catch(function(e){
         hideSaving();
         alert('Chyba při ukládání: ' + e.message + ' — vrácena původní hodnota.');
-        rychlaAktualizace(radek, puvodniMnozstvi);
+        rychlaAktualizace(id, puvodniMnozstvi);
       });
   };
   document.getElementById('modalOverlay').classList.add('open');
@@ -1118,7 +1118,7 @@ function openInventuraModal() {
     const puvodniMnozstvi = currentProduct.mnozstvi;
 
     // OKAMŽITĚ aktualizuj UI
-    rychlaAktualizace(radek, val);
+    rychlaAktualizace(id, val);
     showSaving();
 
     // Na pozadí zapiš na server
@@ -1126,13 +1126,13 @@ function openInventuraModal() {
       .then(function(res) {
         hideSaving();
         if (res.noveMnozstvi !== val) {
-          rychlaAktualizace(radek, res.noveMnozstvi);
+          rychlaAktualizace(id, res.noveMnozstvi);
         }
       })
       .catch(function(e){
         hideSaving();
         alert('Chyba při ukládání: ' + e.message + ' — vrácena původní hodnota.');
-        rychlaAktualizace(radek, puvodniMnozstvi);
+        rychlaAktualizace(id, puvodniMnozstvi);
       });
   };
   document.getElementById('modalOverlay').classList.add('open');
