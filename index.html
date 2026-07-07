@@ -636,10 +636,10 @@ tr:hover td{background:#fafafa;cursor:pointer}
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Ks v balení</label><input class="form-input" id="ef_ksVBaleni" type="number" min="1" value="1"></div>
-        <div class="form-group"><label class="form-label">Minimum (ks)</label><input class="form-input" id="ef_minimum" type="number" min="0" value="1"></div>
+        <div class="form-group"><label class="form-label" id="ef_minimum_label">Minimum</label><input class="form-input" id="ef_minimum" type="number" min="0" value="1"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Optimum (ks)</label><input class="form-input" id="ef_optimum" type="number" min="0" value="2"></div>
+        <div class="form-group"><label class="form-label" id="ef_optimum_label">Optimum</label><input class="form-input" id="ef_optimum" type="number" min="0" value="2"></div>
         <div class="form-group"><label class="form-label">EAN kód</label><input class="form-input" id="ef_ean" placeholder="Nepovinné"></div>
       </div>
       <div class="form-row">
@@ -679,7 +679,7 @@ let searchTimeout = null;
 let spravaTimeout = null;
 
 // ── AUTH / BACKEND ────────────────────────────────────
-const BACKEND_URL = 'https://script.google.com/macros/s/AKfycby_n3qcc44D_KXWyqWKXSVtMrezUcka1UH_KNgXvxEjf1CDAoQihUVedby-ARpDedfb/exec';
+const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbxv51Qed1nq9E5WI9YfxkRbCuyuI75PcWAxi6TwfiLevsXzISGv8m6Ts1aoZvgg094Q/exec';
 
 // PIN se pamatuje jen v pameti (ne v sessionStorage) — prezije reload
 // stranky, ale NE zavreni a znovuotevreni appky (na mobilu se sessionStorage
@@ -929,7 +929,7 @@ function alertRowHtml(p, color) {
       <div class="alert-name">${p.nazev}</div>
       <div class="alert-detail">${p.kategorie}${p.podkategorie ? ' / '+p.podkategorie : ''} · ${p.dodavatel||'—'}</div>
     </div>
-    <div class="alert-badge"><span class="badge ${color==='red'?'badge-zero':'badge-low'}">${ks} ks</span></div>
+    <div class="alert-badge"><span class="badge ${color==='red'?'badge-zero':'badge-low'}">${ks} ${jednProd(p)}</span></div>
   </div>`;
 }
 
@@ -974,7 +974,7 @@ function expiraceRowHtml(p) {
     <div class="alert-dot ${barva}"></div>
     <div class="alert-info">
       <div class="alert-name">${p.nazev}</div>
-      <div class="alert-detail">${p.kategorie}${p.podkategorie ? ' / '+p.podkategorie : ''} · ${p.mnozstvi} ks na skladě</div>
+      <div class="alert-detail">${p.kategorie}${p.podkategorie ? ' / '+p.podkategorie : ''} · ${p.mnozstvi} ${jednProd(p)} na skladě</div>
     </div>
     <div class="alert-badge"><span class="badge ${badge}">${p.expirace}</span></div>
   </div>`;
@@ -1018,9 +1018,10 @@ function renderSearchResults(query) {
   const tbody = document.getElementById('searchBody');
   if (!tbody) return;
   tbody.innerHTML = results.map(p => {
+    const jedn = jednProd(p);
     const ks = p.mnozstvi !== null ? p.mnozstvi : null;
     const bc = p.alert==='kriticky' ? 'badge-zero' : p.alert==='nizky' ? 'badge-low' : ks!==null ? 'badge-ok' : 'badge-empty';
-    const bt = ks !== null ? ks+' ks' : '– ks';
+    const bt = ks !== null ? ks+' '+jedn : '– '+jedn;
     return `<tr onclick="openDetail(${p.id})">
       <td><div class="td-name">${p.nazev}</div><div class="td-sub">${p.dodavatel||''}</div></td>
       <td>${p.kategorie||'—'}</td>
@@ -1028,8 +1029,8 @@ function renderSearchResults(query) {
       <td>${p.dodavatel||'—'}</td>
       <td>${p.umisteni||'—'}</td>
       <td><span class="badge ${bc}">${bt}</span></td>
-      <td>${p.minimum||'—'} ks</td>
-      <td>${p.optimum||'—'} ks</td>
+      <td>${p.minimum||'—'} ${jedn}</td>
+      <td>${p.optimum||'—'} ${jedn}</td>
       <td><span class="badge ${p.typ==='sledovaný'?'badge-sledovany':'badge-inventurni'}">${p.typ||'—'}</span></td>
     </tr>`;
   }).join('');
@@ -1051,24 +1052,25 @@ function closeDetail() {
 }
 
 function renderDetailPanel(p) {
+  const jedn = jednProd(p);
   const ks = p.mnozstvi !== null ? p.mnozstvi : 0;
-  const bal = p.ksVBaleni > 1 ? Math.floor(ks / p.ksVBaleni) : null;
+  const kusuNavic = p.ksVBaleni > 1 && p.mnozstvi !== null ? ' · '+(ks * p.ksVBaleni)+' ks' : '';
   const qc = p.alert==='kriticky' ? 'zero' : p.alert==='nizky' ? 'low' : 'ok';
   document.getElementById('detailPanelBody').innerHTML = `
     <div class="detail-qty">
       <div class="detail-qty-num ${qc}">${p.mnozstvi !== null ? ks : '?'}<span id="savingIndicator"></span></div>
-      <div class="detail-qty-label">kusů na skladě${bal !== null ? ' · '+bal+' balení' : ''}</div>
-      ${p.minimum ? `<div class="detail-qty-label" style="font-size:11px;margin-top:2px">min. ${p.minimum} ks</div>` : ''}
+      <div class="detail-qty-label">${jedn} na skladě${kusuNavic}</div>
+      ${p.minimum ? `<div class="detail-qty-label" style="font-size:11px;margin-top:2px">min. ${p.minimum} ${jedn}</div>` : ''}
     </div>
     <div class="detail-actions">
-      <button class="detail-action-btn btn-prijem" onclick="openPohybModal('příjem')">+ Příjem<br><span style="font-size:11px;font-weight:400">${p.ksVBaleni > 1 ? 'balení' : 'ks'}</span></button>
-      <button class="detail-action-btn btn-vydej" onclick="openPohybModal('výdej')">− Výdej<br><span style="font-size:11px;font-weight:400">${p.ksVBaleni > 1 ? 'balení' : 'ks'}</span></button>
+      <button class="detail-action-btn btn-prijem" onclick="openPohybModal('příjem')">+ Příjem<br><span style="font-size:11px;font-weight:400">${jedn}</span></button>
+      <button class="detail-action-btn btn-vydej" onclick="openPohybModal('výdej')">− Výdej<br><span style="font-size:11px;font-weight:400">${jedn}</span></button>
       <button class="detail-action-btn btn-odpis" onclick="openPohybModal('odpis')">🗑 Odpis<br><span style="font-size:11px;font-weight:400">expir./ztráta</span></button>
       <button class="detail-action-btn btn-inventura-small" onclick="openInventuraModal()">📋 Zadat skutečný stav</button>
     </div>
     <div class="detail-fields">
-      ${df('Minimum',p.minimum+' ks')}
-      ${df('Optimum',p.optimum+' ks')}
+      ${df('Minimum',p.minimum+' '+jedn)}
+      ${df('Optimum',p.optimum+' '+jedn)}
       ${df('Kategorie',p.kategorie)}
       ${p.podkategorie ? df('Podkategorie',p.podkategorie) : ''}
       ${df('Dodavatel',p.dodavatel)}
@@ -1091,25 +1093,24 @@ function df(label, val) {
 }
 
 // ── MODALY ────────────────────────────────────────────
-// Sestricka zadava vzdy pocet BALENI; appka prepocita na kusy podle
-// "Ks v baleni" daneho produktu (mnozstvi se ve skladu drzi v kusech).
-// modalKsVBaleni = kolik ks ma jedno baleni prave otevreneho produktu.
+// Sestricka zadava pocet v JEDNOTCE produktu (sloupec Jednotka: ks,
+// balení, sada...). Mnozstvi se ve skladu drzi v teto jednotce, zadny
+// prepocet. "Ks v baleni" se pouziva jen na sdruzene rukavice (prepocet
+// na jednotlive kusy pro jejich spolecnou hranici). modalKsVBaleni slouzi
+// jen k informativnimu nahledu "= X ks" u produktu balenych po vice kusech.
 let modalKsVBaleni = 1;
 
-function nastavModalLabel(uvod) {
-  const el = document.getElementById('modalInputLabel');
-  if (modalKsVBaleni > 1) {
-    el.textContent = uvod + ' (1 balení = ' + modalKsVBaleni + ' ks)';
-  } else {
-    el.textContent = uvod.replace('balení', 'kusů');
-  }
-  aktualizujModalHint();
+// Jednotka produktu z tabulky (sloupec Jednotka), fallback "ks".
+function jednProd(p) {
+  return (p && p.jednotka && p.jednotka.toString().trim()) || 'ks';
 }
 
 function aktualizujModalHint() {
   const el = document.getElementById('modalInputHint');
   if (!el) return;
   const val = parseInt(document.getElementById('modalInput').value);
+  // Nahled na pocet jednotlivych kusu — jen u produktu balenych po vice
+  // kusech (rukavice), aby se dalo propojit s hranici sdruzenych v kusech.
   if (modalKsVBaleni > 1 && !isNaN(val)) {
     el.textContent = '= ' + (val * modalKsVBaleni) + ' ks';
   } else {
@@ -1120,22 +1121,25 @@ function aktualizujModalHint() {
 function openPohybModal(typ) {
   if (!currentProduct) return;
   const jeVydej = (typ === 'výdej' || typ === 'odpis');
+  const jedn = jednProd(currentProduct);
   const labels = {'příjem':'Příjem na sklad','výdej':'Výdej ze skladu','odpis':'Odpis (expirováno / ztráta)'};
   document.getElementById('modalTitle').textContent = labels[typ];
-  document.getElementById('modalSub').textContent = currentProduct.nazev + ' · aktuálně: ' + (currentProduct.mnozstvi !== null ? currentProduct.mnozstvi+' ks' : 'nezadáno');
+  document.getElementById('modalSub').textContent = currentProduct.nazev + ' · aktuálně: ' + (currentProduct.mnozstvi !== null ? currentProduct.mnozstvi+' '+jedn : 'nezadáno');
   modalKsVBaleni = currentProduct.ksVBaleni || 1;
   document.getElementById('modalInput').value = 1;
   document.getElementById('modalInput').min = 1;
-  nastavModalLabel(jeVydej ? 'Kolik balení vydat?' : 'Kolik balení?');
+  document.getElementById('modalInputLabel').textContent =
+    (jeVydej ? 'Kolik ' + jedn + ' vydat?' : 'Kolik ' + jedn + '?') +
+    (modalKsVBaleni > 1 ? ' (1 ' + jedn + ' = ' + modalKsVBaleni + ' ks)' : '');
+  aktualizujModalHint();
   const pozEl = document.getElementById('modalPoznamka');
   pozEl.style.display = 'block';
   pozEl.placeholder = typ === 'odpis' ? 'Důvod odpisu...' : 'Poznámka (volitelné)';
   pozEl.value = '';
-  modalCallback = function(pocetBaleni) {
-    const pocet = pocetBaleni * (currentProduct.ksVBaleni || 1); // ks
+  modalCallback = function(pocet) {
     const zmena = jeVydej ? -pocet : pocet;
     if (jeVydej && currentProduct.mnozstvi !== null && pocet > currentProduct.mnozstvi) {
-      if (!confirm('Upozornění: odebíráš '+pocet+' ks ale na skladě je jen '+currentProduct.mnozstvi+' ks. Pokračovat?')) return;
+      if (!confirm('Upozornění: odebíráš '+pocet+' '+jedn+' ale na skladě je jen '+currentProduct.mnozstvi+' '+jedn+'. Pokračovat?')) return;
     }
     const poznamka = document.getElementById('modalPoznamka').value || '';
     const id = currentProduct.id;
@@ -1167,17 +1171,19 @@ function openPohybModal(typ) {
 
 function openInventuraModal() {
   if (!currentProduct) return;
+  const jedn = jednProd(currentProduct);
   document.getElementById('modalTitle').textContent = 'Zadat skutečný stav';
   document.getElementById('modalSub').textContent = currentProduct.nazev;
   modalKsVBaleni = currentProduct.ksVBaleni || 1;
-  const soucasneBaleni = currentProduct.mnozstvi !== null ? Math.round(currentProduct.mnozstvi / modalKsVBaleni) : '';
-  document.getElementById('modalInput').value = soucasneBaleni;
+  document.getElementById('modalInput').value = currentProduct.mnozstvi !== null ? currentProduct.mnozstvi : '';
   document.getElementById('modalInput').min = 0;
-  nastavModalLabel('Kolik balení celkem?');
+  document.getElementById('modalInputLabel').textContent =
+    'Kolik ' + jedn + ' celkem?' +
+    (modalKsVBaleni > 1 ? ' (1 ' + jedn + ' = ' + modalKsVBaleni + ' ks)' : '');
+  aktualizujModalHint();
   document.getElementById('modalPoznamka').style.display = 'none';
   document.getElementById('modalPoznamka').value = '';
-  modalCallback = function(valBaleni) {
-    const val = valBaleni * (currentProduct.ksVBaleni || 1); // ks
+  modalCallback = function(val) {
     const id = currentProduct.id;
     const puvodniMnozstvi = currentProduct.mnozstvi;
 
@@ -1225,15 +1231,20 @@ function renderPohyby(data) {
     return;
   }
   const tc = t => t==='příjem'?'prijem':t==='výdej'?'vydej':'inventura';
-  tbody.innerHTML = data.map(r => `<tr>
+  tbody.innerHTML = data.map(r => {
+    // Jednotka pohybu — dohledej z aktualnich produktu podle nazvu (log ji neuklada).
+    const jp = ((allProducts.find(x => x.nazev === r.produkt) || {}).jednotka || '').toString().trim();
+    const j = jp ? ' ' + jp : '';
+    return `<tr>
     <td>${r.datum}</td><td>${r.cas}</td>
     <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.produkt}</td>
     <td><span class="pohyb-typ ${tc(r.typ)}">${r.typ}</span></td>
-    <td style="font-weight:600;color:${r.zmena>0?'#1D9E75':'#E24B4A'}">${r.zmena>0?'+'+r.zmena:r.zmena} ks</td>
-    <td>${r.stavPo} ks</td>
+    <td style="font-weight:600;color:${r.zmena>0?'#1D9E75':'#E24B4A'}">${r.zmena>0?'+'+r.zmena:r.zmena}${j}</td>
+    <td>${r.stavPo}${j}</td>
     <td style="font-size:12px">${r.kdo||''}</td>
     <td style="color:#888;font-size:12px">${r.poznamka||''}</td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
 }
 
 // ── WIZARD ────────────────────────────────────────────
@@ -1259,21 +1270,21 @@ function renderWizardStep() {
   }
   const p = wizardQueue[wizardIndex];
   const ksb = p.ksVBaleni || 1;
+  const jedn = jednProd(p);
   const pct = Math.round((wizardIndex / total) * 100);
   document.getElementById('wizardBar').style.width = pct + '%';
   document.getElementById('wizardMeta').textContent = (wizardIndex+1)+' / '+total+' produktů';
-  const soucasneBaleni = p.mnozstvi !== null ? Math.round(p.mnozstvi / ksb) : '';
   const stavText = p.mnozstvi !== null
-    ? p.mnozstvi + ' ks' + (ksb > 1 ? ' (' + soucasneBaleni + ' balení)' : '')
+    ? p.mnozstvi + ' ' + jedn + (ksb > 1 ? ' (' + (p.mnozstvi * ksb) + ' ks)' : '')
     : 'nezadáno';
-  const label = ksb > 1 ? 'Kolik balení celkem? (1 balení = ' + ksb + ' ks)' : 'Kolik kusů celkem?';
+  const label = 'Kolik ' + jedn + ' celkem?' + (ksb > 1 ? ' (1 ' + jedn + ' = ' + ksb + ' ks)' : '');
   document.getElementById('wizardContent').innerHTML = `
     <div class="wizard-card">
       <div class="wizard-nazev">${p.nazev}</div>
       <div class="wizard-sub">${p.kategorie}${p.podkategorie ? ' / '+p.podkategorie : ''} · ${p.dodavatel||''} · ${p.umisteni||'umístění nezadáno'}</div>
-      <div style="text-align:center;margin-bottom:8px;font-size:13px;color:#888">Aktuální stav: <strong>${stavText}</strong> · min. ${p.minimum} ks</div>
+      <div style="text-align:center;margin-bottom:8px;font-size:13px;color:#888">Aktuální stav: <strong>${stavText}</strong> · min. ${p.minimum} ${jedn}</div>
       <div style="text-align:center;margin-bottom:4px;font-size:13px;color:#666">${label}</div>
-      <input class="wizard-input-big" id="wizardInput" type="number" min="0" placeholder="${soucasneBaleni!==''?soucasneBaleni:'0'}" oninput="aktualizujWizardHint(${ksb})">
+      <input class="wizard-input-big" id="wizardInput" type="number" min="0" placeholder="${p.mnozstvi!==null?p.mnozstvi:'0'}" oninput="aktualizujWizardHint(${ksb})">
       <div id="wizardHint" style="text-align:center;font-size:13px;color:#1D9E75;font-weight:600;min-height:18px;margin-bottom:8px"></div>
       <div class="wizard-actions">
         <button class="wizard-skip" onclick="wizardSkip()">Přeskočit</button>
@@ -1292,10 +1303,9 @@ function aktualizujWizardHint(ksb) {
 
 function wizardNext() {
   const inp = document.getElementById('wizardInput');
-  const valBaleni = inp ? parseInt(inp.value) : NaN;
-  if (isNaN(valBaleni) || valBaleni < 0) { wizardSkip(); return; }
+  const val = inp ? parseInt(inp.value) : NaN;
+  if (isNaN(val) || val < 0) { wizardSkip(); return; }
   const p = wizardQueue[wizardIndex];
-  const val = valBaleni * (p.ksVBaleni || 1); // ks
   callBackend('setMnozstvi', { id: p.id, hodnota: val, poznamka: 'hromadná inventura' })
     .then(function(res) { p.mnozstvi = res.noveMnozstvi; recalcAlert(p); updateStats(); })
     .catch(function(e) { console.error(e); ukazChybu('Neuložilo se: ' + p.nazev + ' — zkus to znovu přes vyhledávání.'); });
@@ -1314,7 +1324,7 @@ function renderSprava(query) {
     <td>${p.kategorie||'—'}</td>
     <td>${p.podkategorie||'—'}</td>
     <td>${p.ksVBaleni}</td>
-    <td>${p.minimum} ks</td>
+    <td>${p.minimum} ${jednProd(p)}</td>
     <td>${p.umisteni||'—'}</td>
     <td><span class="badge ${p.typ==='sledovaný'?'badge-sledovany':'badge-inventurni'}">${p.typ}</span></td>
     <td style="white-space:nowrap">
@@ -1389,6 +1399,9 @@ function showAddModal() {
   document.getElementById('ef_minimum').value = 1;
   document.getElementById('ef_optimum').value = 2;
   document.getElementById('ef_typ').value = 'inventurní';
+  document.getElementById('ef_minimum_label').textContent = 'Minimum';
+  document.getElementById('ef_optimum_label').textContent = 'Optimum';
+  kopirovanaJednotka = 'ks';
   obnovPodkategorie();
   document.getElementById('editModalOverlay').classList.add('open');
 }
@@ -1408,6 +1421,8 @@ function showEditModal(id) {
   document.getElementById('ef_typ').value = p.typ || 'inventurní';
   document.getElementById('ef_poznamka_edit').value = p.poznamka || '';
   document.getElementById('ef_ean').value = p.ean || '';
+  document.getElementById('ef_minimum_label').textContent = 'Minimum (' + jednProd(p) + ')';
+  document.getElementById('ef_optimum_label').textContent = 'Optimum (' + jednProd(p) + ')';
   obnovPodkategorie(p.podkategorie);
   document.getElementById('editModalOverlay').classList.add('open');
 }
@@ -1432,9 +1447,15 @@ function kopirovatProdukt(id) {
   document.getElementById('ef_typ').value = p.typ || 'inventurní';
   document.getElementById('ef_poznamka_edit').value = p.poznamka || '';
   document.getElementById('ef_ean').value = p.ean || '';
+  document.getElementById('ef_minimum_label').textContent = 'Minimum (' + jednProd(p) + ')';
+  document.getElementById('ef_optimum_label').textContent = 'Optimum (' + jednProd(p) + ')';
+  kopirovanaJednotka = jednProd(p); // novy radek zdedi jednotku kopirovaneho produktu
   obnovPodkategorie(p.podkategorie);
   document.getElementById('editModalOverlay').classList.add('open');
 }
+
+// Jednotka, kterou dostane novy produkt zalozeny pres "Kopírovat" (jinak 'ks').
+let kopirovanaJednotka = 'ks';
 
 function saveProdukt() {
   const nazev = document.getElementById('ef_nazev').value.trim();
@@ -1471,6 +1492,7 @@ function saveProdukt() {
       })
       .catch(function(e) { alert('Chyba: ' + e.message); });
   } else {
+    data.jednotka = kopirovanaJednotka; // pri kopirovani zdedi jednotku, jinak 'ks'
     callBackend('pridatProdukt', { data: data })
       .then(function(res) {
         if (res && res.success === false) { alert('Chyba: ' + res.error); return; }
@@ -1590,10 +1612,11 @@ function zobrazVyberUmisteni(shody, ean) {
       </div>
       ${shody.map(function(s) {
         const nazevEsc = s.nazev.replace(/'/g, "\\'");
+        const jednS = jednProd(allProducts.find(x => x.id === s.id));
         return `<div class="alert-row" style="cursor:pointer" onclick="zobrazNalezenyProdukt(${s.id}, '${nazevEsc}', '${ean}')">
           <div class="alert-info">
             <div class="alert-name">${s.umisteni || 'Umístění nezadáno'}</div>
-            <div class="alert-detail">${s.mnozstvi !== null ? s.mnozstvi + ' ks' : 'nezadáno'}</div>
+            <div class="alert-detail">${s.mnozstvi !== null ? s.mnozstvi + ' ' + jednS : 'nezadáno'}</div>
           </div>
         </div>`;
       }).join('')}
@@ -1603,13 +1626,14 @@ function zobrazVyberUmisteni(shody, ean) {
 
 function zobrazNalezenyProdukt(id, nazev, ean) {
   const p = allProducts.find(x => x.id === id);
-  const stavText = p && p.mnozstvi !== null ? ` · aktuálně ${p.mnozstvi} ks` : '';
+  const jedn = jednProd(p);
+  const stavText = p && p.mnozstvi !== null ? ` · aktuálně ${p.mnozstvi} ${jedn}` : '';
   document.getElementById('skenerVysledek').innerHTML = `
     <div class="content-card full" style="padding:20px;text-align:center">
       <div style="font-size:32px;margin-bottom:8px">✓</div>
       <div style="font-size:16px;font-weight:600;margin-bottom:4px">${nazev}</div>
       <div style="font-size:12px;color:#888;margin-bottom:16px">EAN: ${ean}${stavText}</div>
-      <button class="btn" style="width:100%;justify-content:center;background:#FAECE7;color:#993C1D;border-color:#F5C4B3;margin-bottom:8px" onclick="rychlyVydejZeSkeneru(${id})">− Vydat 1 balení${p && p.ksVBaleni > 1 ? ' ('+p.ksVBaleni+' ks)' : ''}</button>
+      <button class="btn" style="width:100%;justify-content:center;background:#FAECE7;color:#993C1D;border-color:#F5C4B3;margin-bottom:8px" onclick="rychlyVydejZeSkeneru(${id})">− Vydat 1 ${jedn}</button>
       <div style="display:flex;gap:8px">
         <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="otevriZeSkeneru(${id})">Otevřít produkt</button>
         <button class="btn" style="flex:1;justify-content:center" onclick="pokracovatSkenovani()">Skenovat další</button>
@@ -1617,27 +1641,27 @@ function zobrazNalezenyProdukt(id, nazev, ean) {
     </div>`;
 }
 
-// Rychly vydej 1 BALENI primo z vysledku skenovani — pro sestricku u kresla,
-// ktera nema cas otevirat detail produktu. Odecte cele baleni (ksVBaleni ks).
-// Pro jine mnozstvi/prijem/odpis pouzij "Otevřít produkt".
+// Rychly vydej 1 JEDNOTKY (1 balení / 1 ks — podle sloupce Jednotka) primo
+// z vysledku skenovani — pro sestricku u kresla, ktera nema cas otevirat
+// detail. Pro jine mnozstvi/prijem/odpis pouzij "Otevřít produkt".
 function rychlyVydejZeSkeneru(id) {
   const p = allProducts.find(x => x.id === id);
   if (!p) return;
-  const ksb = p.ksVBaleni || 1;
+  const jedn = jednProd(p);
   const puvodniMnozstvi = p.mnozstvi;
-  const odhad = Math.max(0, (puvodniMnozstvi || 0) - ksb);
+  const odhad = Math.max(0, (puvodniMnozstvi || 0) - 1);
 
   rychlaAktualizace(id, odhad);
   document.getElementById('skenerVysledek').innerHTML = '<div class="content-card full" style="padding:20px;text-align:center"><div class="spinner" style="margin:0 auto 12px"></div>Vydávám...</div>';
 
-  callBackend('updateMnozstvi', { id: id, zmena: -ksb, typ: 'výdej', poznamka: 'rychlý výdej ze skeneru' })
+  callBackend('updateMnozstvi', { id: id, zmena: -1, typ: 'výdej', poznamka: 'rychlý výdej ze skeneru' })
     .then(function(res) {
       if (res.noveMnozstvi !== odhad) rychlaAktualizace(id, res.noveMnozstvi);
       document.getElementById('skenerVysledek').innerHTML = `
         <div class="content-card full" style="padding:20px;text-align:center">
           <div style="font-size:32px;margin-bottom:8px">✓</div>
           <div style="font-size:16px;font-weight:600;margin-bottom:4px">${p.nazev}</div>
-          <div style="font-size:13px;color:#993C1D;margin-bottom:16px">Vydáno 1 balení${ksb>1?' ('+ksb+' ks)':''} · nyní ${res.noveMnozstvi} ks</div>
+          <div style="font-size:13px;color:#993C1D;margin-bottom:16px">Vydáno 1 ${jedn} · nyní ${res.noveMnozstvi} ${jedn}</div>
           <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="pokracovatSkenovani()">Skenovat další</button>
         </div>`;
     })
@@ -1721,8 +1745,10 @@ function recalcAlert(p) {
     // hranici z konfigurace. Stejny alert dostanou vsechny radky skupiny.
     const klic = (p.podkategorie || '').toString().trim().toLowerCase();
     const cleny = allProducts.filter(x => (x.podkategorie || '').toString().trim().toLowerCase() === klic);
+    // Soucet v jednotlivych KUSECH (mnozstvi je v balenich, prepocet pres
+    // Ks v baleni) — hranice sdruzenych je v kusech.
     let soucet = 0, maZname = false;
-    cleny.forEach(x => { if (x.mnozstvi !== null) { soucet += x.mnozstvi; maZname = true; } });
+    cleny.forEach(x => { if (x.mnozstvi !== null) { soucet += x.mnozstvi * (x.ksVBaleni || 1); maZname = true; } });
     const alert = alertZHodnot(maZname ? soucet : null, cfg.minimum, cfg.optimum);
     cleny.forEach(x => x.alert = alert);
     return;
@@ -1740,7 +1766,7 @@ function prepocitejAlerty(list) {
     if (!cfg) return;
     const klic = (p.podkategorie || '').toString().trim().toLowerCase();
     if (!pooly[klic]) pooly[klic] = { cfg: cfg, soucet: 0, maZname: false, cleny: [] };
-    if (p.mnozstvi !== null) { pooly[klic].soucet += p.mnozstvi; pooly[klic].maZname = true; }
+    if (p.mnozstvi !== null) { pooly[klic].soucet += p.mnozstvi * (p.ksVBaleni || 1); pooly[klic].maZname = true; }
     pooly[klic].cleny.push(p);
   });
   Object.keys(pooly).forEach(klic => {
@@ -1830,15 +1856,16 @@ function renderMistnosti() {
 function mistnostKarta(nazev, produkty) {
   const radky = produkty.length
     ? produkty.map(p => {
+        const jedn = jednProd(p);
         const ks = p.mnozstvi !== null ? p.mnozstvi : null;
         const bc = p.alert==='kriticky' ? 'badge-zero' : p.alert==='nizky' ? 'badge-low' : ks!==null ? 'badge-ok' : 'badge-empty';
-        const bt = ks !== null ? ks+' ks' : '– ks';
+        const bt = ks !== null ? ks+' '+jedn : '– '+jedn;
         return `<tr onclick="openDetail(${p.id})" style="cursor:pointer">
           <td><div class="td-name">${p.nazev}</div></td>
           <td>${p.kategorie||'—'}</td>
           <td>${p.podkategorie||'—'}</td>
           <td><span class="badge ${bc}">${bt}</span></td>
-          <td>${p.minimum||'—'} ks</td>
+          <td>${p.minimum||'—'} ${jedn}</td>
         </tr>`;
       }).join('')
     : '';
@@ -1900,11 +1927,14 @@ function sesbiratKObjednani() {
     if (!skupiny[klic]) skupiny[klic] = {
       sdruzeno: !!cfg, cfg: cfg,
       nazev: cfg ? cfg.nazev : p.nazev,
+      // Sdruzene se scitaji v KUSECH (hranice v kusech), bezne v jednotce
+      // produktu (balení/ks/…).
+      jednotka: cfg ? 'ks' : jednProd(p),
       mnozstviSoucet: 0, minimumSoucet: 0, optimumSoucet: 0,
       zaznamy: [], dodavatele: {}, nejhorsiAlert: 'ok'
     };
     const g = skupiny[klic];
-    if (p.mnozstvi !== null) g.mnozstviSoucet += p.mnozstvi;
+    if (p.mnozstvi !== null) g.mnozstviSoucet += cfg ? p.mnozstvi * (p.ksVBaleni || 1) : p.mnozstvi;
     g.minimumSoucet += p.minimum;
     g.optimumSoucet += p.optimum;
     g.zaznamy.push(p);
@@ -1922,14 +1952,11 @@ function sesbiratKObjednani() {
     const minimum = g.sdruzeno ? g.cfg.minimum : g.minimumSoucet;
     const optimum = g.sdruzeno ? g.cfg.optimum : g.optimumSoucet;
     const chybi = Math.max(0, optimum - g.mnozstviSoucet);
-    // U sdruzenych se balení nepocita — kazdy dodavatel muze mit jinou
-    // velikost balení, takze "objednat X bal" by nedavalo smysl.
-    const baleni = g.sdruzeno ? null : Math.ceil(chybi / (g.zaznamy[0].ksVBaleni || 1));
     const mista = g.zaznamy.map(z => {
       const kde = g.sdruzeno
         ? ((z.dodavatel || '?') + (z.umisteni ? ' / ' + z.umisteni : ''))
         : (z.umisteni || 'bez umístění');
-      return kde + ': ' + (z.mnozstvi !== null ? z.mnozstvi : '?') + ' ks';
+      return kde + ': ' + (z.mnozstvi !== null ? z.mnozstvi : '?') + ' ' + jednProd(z);
     }).join(' · ');
     vysledek.push({
       id: g.zaznamy[0].id,
@@ -1938,11 +1965,11 @@ function sesbiratKObjednani() {
       podkategorie: g.zaznamy[0].podkategorie,
       dodavatel: g.sdruzeno ? Object.keys(g.dodavatele).sort().join(', ') : g.zaznamy[0].dodavatel,
       sdruzeno: g.sdruzeno,
+      jednotka: g.jednotka,
       mnozstvi: g.mnozstviSoucet,
       minimum: minimum,
       optimum: optimum,
       chybi: chybi,
-      baleni: baleni,
       mista: mista,
       alert: g.nejhorsiAlert
     });
@@ -1964,13 +1991,12 @@ function renderNakup() {
     <td><div class="td-name">${p.nazev}</div><div class="td-sub">${p.mista}</div></td>
     <td>${p.kategorie||'—'}</td>
     <td>${p.podkategorie||'—'}</td>
-    <td><span class="badge ${p.alert==='kriticky'?'badge-zero':'badge-low'}">${p.mnozstvi} ks</span></td>
-    <td>${p.minimum} ks</td>
-    <td style="font-weight:500;color:#E24B4A">${p.chybi} ks</td>
-    <td style="font-weight:600;color:#1D9E75">${p.baleni !== null ? p.baleni + ' bal' : '—'}</td>
+    <td><span class="badge ${p.alert==='kriticky'?'badge-zero':'badge-low'}">${p.mnozstvi} ${p.jednotka}</span></td>
+    <td>${p.minimum} ${p.jednotka}</td>
+    <td style="font-weight:600;color:#1D9E75">${p.chybi} ${p.jednotka}</td>
     <td>${prioritaBadge(p)}</td>
   </tr>`;
-  const hlavicka = `<thead><tr><th>Název</th><th>Kategorie</th><th>Podkategorie</th><th>Na skladě (vše)</th><th>Minimum</th><th>Chybí</th><th>Objednat</th><th>Priorita</th></tr></thead>`;
+  const hlavicka = `<thead><tr><th>Název</th><th>Kategorie</th><th>Podkategorie</th><th>Na skladě (vše)</th><th>Minimum</th><th>Objednat</th><th>Priorita</th></tr></thead>`;
 
   document.getElementById('nakupSub').textContent = potrebuje.length + ' produktů k objednání';
 
@@ -1994,9 +2020,9 @@ function renderNakup() {
               ${sdruzene.map(p => `<tr onclick="openDetail(${p.id})" style="cursor:pointer">
                 <td><div class="td-name">${p.nazev}</div><div class="td-sub">${p.mista}</div></td>
                 <td>${p.dodavatel||'—'}</td>
-                <td><span class="badge ${p.alert==='kriticky'?'badge-zero':'badge-low'}">${p.mnozstvi} ks</span></td>
-                <td>${p.minimum} ks</td>
-                <td style="font-weight:500;color:#E24B4A">${p.chybi} ks</td>
+                <td><span class="badge ${p.alert==='kriticky'?'badge-zero':'badge-low'}">${p.mnozstvi} ${p.jednotka}</span></td>
+                <td>${p.minimum} ${p.jednotka}</td>
+                <td style="font-weight:500;color:#E24B4A">${p.chybi} ${p.jednotka}</td>
                 <td>${prioritaBadge(p)}</td>
               </tr>`).join('')}
             </tbody>
@@ -2039,16 +2065,15 @@ function exportNakupCsv() {
   const potrebuje = sesbiratKObjednani();
   if (!potrebuje.length) { alert('Není co exportovat'); return; }
 
-  const rows = [['Název','Kategorie','Podkategorie','Dodavatel','Na skladě (vše)','Minimum','Optimum','Chybí (ks)','Objednat (bal)','Priorita','Rozpis po místech']];
+  const rows = [['Název','Kategorie','Podkategorie','Dodavatel','Jednotka','Na skladě (vše)','Minimum','Optimum','Objednat','Priorita','Rozpis po místech']];
   potrebuje.forEach(p => {
-    const baleniStr = p.baleni !== null ? p.baleni : '';
     const priorita = p.alert==='kriticky'?'Kritické':'Nízký stav';
     if (p.sdruzeno) {
       // Sdruzena polozka jednou, s vypisem vsech dodavatelu (neduplikovat).
-      rows.push([p.nazev, p.kategorie, p.podkategorie||'', p.dodavatel, p.mnozstvi, p.minimum, p.optimum, p.chybi, baleniStr, priorita, p.mista]);
+      rows.push([p.nazev, p.kategorie, p.podkategorie||'', p.dodavatel, p.jednotka, p.mnozstvi, p.minimum, p.optimum, p.chybi, priorita, p.mista]);
     } else {
       rozdelDodavatele(p.dodavatel).forEach(d => {
-        rows.push([p.nazev, p.kategorie, p.podkategorie||'', d, p.mnozstvi, p.minimum, p.optimum, p.chybi, baleniStr, priorita, p.mista]);
+        rows.push([p.nazev, p.kategorie, p.podkategorie||'', d, p.jednotka, p.mnozstvi, p.minimum, p.optimum, p.chybi, priorita, p.mista]);
       });
     }
   });
