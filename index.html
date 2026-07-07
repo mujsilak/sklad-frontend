@@ -597,7 +597,9 @@ tr:hover td{background:#fafafa;cursor:pointer}
   <div class="modal">
     <div class="modal-title" id="modalTitle">Pohyb</div>
     <div class="modal-sub" id="modalSub"></div>
-    <input class="modal-input" id="modalInput" type="number" min="1" placeholder="0">
+    <div class="modal-input-label" id="modalInputLabel" style="font-size:13px;color:#666;margin-bottom:4px;text-align:center"></div>
+    <input class="modal-input" id="modalInput" type="number" min="1" placeholder="0" oninput="aktualizujModalHint()">
+    <div class="modal-input-hint" id="modalInputHint" style="font-size:13px;color:#1D9E75;font-weight:600;text-align:center;min-height:18px;margin-top:2px"></div>
     <input class="modal-poznamka" id="modalPoznamka" type="text" placeholder="Poznámka (volitelné)" style="display:none">
     <div class="modal-btns">
       <button class="modal-btn cancel" onclick="closeModal()">Zrušit</button>
@@ -1059,8 +1061,8 @@ function renderDetailPanel(p) {
       ${p.minimum ? `<div class="detail-qty-label" style="font-size:11px;margin-top:2px">min. ${p.minimum} ks</div>` : ''}
     </div>
     <div class="detail-actions">
-      <button class="detail-action-btn btn-prijem" onclick="openPohybModal('příjem')">+ Příjem<br><span style="font-size:11px;font-weight:400">${p.ksVBaleni} ks</span></button>
-      <button class="detail-action-btn btn-vydej" onclick="openPohybModal('výdej')">− Výdej<br><span style="font-size:11px;font-weight:400">${p.ksVBaleni} ks</span></button>
+      <button class="detail-action-btn btn-prijem" onclick="openPohybModal('příjem')">+ Příjem<br><span style="font-size:11px;font-weight:400">${p.ksVBaleni > 1 ? 'balení' : 'ks'}</span></button>
+      <button class="detail-action-btn btn-vydej" onclick="openPohybModal('výdej')">− Výdej<br><span style="font-size:11px;font-weight:400">${p.ksVBaleni > 1 ? 'balení' : 'ks'}</span></button>
       <button class="detail-action-btn btn-odpis" onclick="openPohybModal('odpis')">🗑 Odpis<br><span style="font-size:11px;font-weight:400">expir./ztráta</span></button>
       <button class="detail-action-btn btn-inventura-small" onclick="openInventuraModal()">📋 Zadat skutečný stav</button>
     </div>
@@ -1089,19 +1091,48 @@ function df(label, val) {
 }
 
 // ── MODALY ────────────────────────────────────────────
+// Sestricka zadava vzdy pocet BALENI; appka prepocita na kusy podle
+// "Ks v baleni" daneho produktu (mnozstvi se ve skladu drzi v kusech).
+// modalKsVBaleni = kolik ks ma jedno baleni prave otevreneho produktu.
+let modalKsVBaleni = 1;
+
+function nastavModalLabel(uvod) {
+  const el = document.getElementById('modalInputLabel');
+  if (modalKsVBaleni > 1) {
+    el.textContent = uvod + ' (1 balení = ' + modalKsVBaleni + ' ks)';
+  } else {
+    el.textContent = uvod.replace('balení', 'kusů');
+  }
+  aktualizujModalHint();
+}
+
+function aktualizujModalHint() {
+  const el = document.getElementById('modalInputHint');
+  if (!el) return;
+  const val = parseInt(document.getElementById('modalInput').value);
+  if (modalKsVBaleni > 1 && !isNaN(val)) {
+    el.textContent = '= ' + (val * modalKsVBaleni) + ' ks';
+  } else {
+    el.textContent = '';
+  }
+}
+
 function openPohybModal(typ) {
   if (!currentProduct) return;
   const jeVydej = (typ === 'výdej' || typ === 'odpis');
   const labels = {'příjem':'Příjem na sklad','výdej':'Výdej ze skladu','odpis':'Odpis (expirováno / ztráta)'};
   document.getElementById('modalTitle').textContent = labels[typ];
   document.getElementById('modalSub').textContent = currentProduct.nazev + ' · aktuálně: ' + (currentProduct.mnozstvi !== null ? currentProduct.mnozstvi+' ks' : 'nezadáno');
-  document.getElementById('modalInput').value = currentProduct.ksVBaleni;
+  modalKsVBaleni = currentProduct.ksVBaleni || 1;
+  document.getElementById('modalInput').value = 1;
   document.getElementById('modalInput').min = 1;
+  nastavModalLabel(jeVydej ? 'Kolik balení vydat?' : 'Kolik balení?');
   const pozEl = document.getElementById('modalPoznamka');
   pozEl.style.display = 'block';
   pozEl.placeholder = typ === 'odpis' ? 'Důvod odpisu...' : 'Poznámka (volitelné)';
   pozEl.value = '';
-  modalCallback = function(pocet) {
+  modalCallback = function(pocetBaleni) {
+    const pocet = pocetBaleni * (currentProduct.ksVBaleni || 1); // ks
     const zmena = jeVydej ? -pocet : pocet;
     if (jeVydej && currentProduct.mnozstvi !== null && pocet > currentProduct.mnozstvi) {
       if (!confirm('Upozornění: odebíráš '+pocet+' ks ale na skladě je jen '+currentProduct.mnozstvi+' ks. Pokračovat?')) return;
@@ -1138,11 +1169,15 @@ function openInventuraModal() {
   if (!currentProduct) return;
   document.getElementById('modalTitle').textContent = 'Zadat skutečný stav';
   document.getElementById('modalSub').textContent = currentProduct.nazev;
-  document.getElementById('modalInput').value = currentProduct.mnozstvi !== null ? currentProduct.mnozstvi : '';
+  modalKsVBaleni = currentProduct.ksVBaleni || 1;
+  const soucasneBaleni = currentProduct.mnozstvi !== null ? Math.round(currentProduct.mnozstvi / modalKsVBaleni) : '';
+  document.getElementById('modalInput').value = soucasneBaleni;
   document.getElementById('modalInput').min = 0;
+  nastavModalLabel('Kolik balení celkem?');
   document.getElementById('modalPoznamka').style.display = 'none';
   document.getElementById('modalPoznamka').value = '';
-  modalCallback = function(val) {
+  modalCallback = function(valBaleni) {
+    const val = valBaleni * (currentProduct.ksVBaleni || 1); // ks
     const id = currentProduct.id;
     const puvodniMnozstvi = currentProduct.mnozstvi;
 
@@ -1223,15 +1258,23 @@ function renderWizardStep() {
     return;
   }
   const p = wizardQueue[wizardIndex];
+  const ksb = p.ksVBaleni || 1;
   const pct = Math.round((wizardIndex / total) * 100);
   document.getElementById('wizardBar').style.width = pct + '%';
   document.getElementById('wizardMeta').textContent = (wizardIndex+1)+' / '+total+' produktů';
+  const soucasneBaleni = p.mnozstvi !== null ? Math.round(p.mnozstvi / ksb) : '';
+  const stavText = p.mnozstvi !== null
+    ? p.mnozstvi + ' ks' + (ksb > 1 ? ' (' + soucasneBaleni + ' balení)' : '')
+    : 'nezadáno';
+  const label = ksb > 1 ? 'Kolik balení celkem? (1 balení = ' + ksb + ' ks)' : 'Kolik kusů celkem?';
   document.getElementById('wizardContent').innerHTML = `
     <div class="wizard-card">
       <div class="wizard-nazev">${p.nazev}</div>
       <div class="wizard-sub">${p.kategorie}${p.podkategorie ? ' / '+p.podkategorie : ''} · ${p.dodavatel||''} · ${p.umisteni||'umístění nezadáno'}</div>
-      <div style="text-align:center;margin-bottom:8px;font-size:13px;color:#888">Aktuální stav: <strong>${p.mnozstvi!==null?p.mnozstvi+' ks':'nezadáno'}</strong> · min. ${p.minimum} ks</div>
-      <input class="wizard-input-big" id="wizardInput" type="number" min="0" placeholder="${p.mnozstvi!==null?p.mnozstvi:'0'}">
+      <div style="text-align:center;margin-bottom:8px;font-size:13px;color:#888">Aktuální stav: <strong>${stavText}</strong> · min. ${p.minimum} ks</div>
+      <div style="text-align:center;margin-bottom:4px;font-size:13px;color:#666">${label}</div>
+      <input class="wizard-input-big" id="wizardInput" type="number" min="0" placeholder="${soucasneBaleni!==''?soucasneBaleni:'0'}" oninput="aktualizujWizardHint(${ksb})">
+      <div id="wizardHint" style="text-align:center;font-size:13px;color:#1D9E75;font-weight:600;min-height:18px;margin-bottom:8px"></div>
       <div class="wizard-actions">
         <button class="wizard-skip" onclick="wizardSkip()">Přeskočit</button>
         <button class="wizard-next" onclick="wizardNext()">Uložit a další →</button>
@@ -1240,11 +1283,19 @@ function renderWizardStep() {
   setTimeout(() => { const i = document.getElementById('wizardInput'); if(i) i.focus(); }, 100);
 }
 
+function aktualizujWizardHint(ksb) {
+  const el = document.getElementById('wizardHint');
+  if (!el) return;
+  const val = parseInt(document.getElementById('wizardInput').value);
+  el.textContent = (ksb > 1 && !isNaN(val)) ? '= ' + (val * ksb) + ' ks' : '';
+}
+
 function wizardNext() {
   const inp = document.getElementById('wizardInput');
-  const val = inp ? parseInt(inp.value) : NaN;
-  if (isNaN(val) || val < 0) { wizardSkip(); return; }
+  const valBaleni = inp ? parseInt(inp.value) : NaN;
+  if (isNaN(valBaleni) || valBaleni < 0) { wizardSkip(); return; }
   const p = wizardQueue[wizardIndex];
+  const val = valBaleni * (p.ksVBaleni || 1); // ks
   callBackend('setMnozstvi', { id: p.id, hodnota: val, poznamka: 'hromadná inventura' })
     .then(function(res) { p.mnozstvi = res.noveMnozstvi; recalcAlert(p); updateStats(); })
     .catch(function(e) { console.error(e); ukazChybu('Neuložilo se: ' + p.nazev + ' — zkus to znovu přes vyhledávání.'); });
@@ -1558,7 +1609,7 @@ function zobrazNalezenyProdukt(id, nazev, ean) {
       <div style="font-size:32px;margin-bottom:8px">✓</div>
       <div style="font-size:16px;font-weight:600;margin-bottom:4px">${nazev}</div>
       <div style="font-size:12px;color:#888;margin-bottom:16px">EAN: ${ean}${stavText}</div>
-      <button class="btn" style="width:100%;justify-content:center;background:#FAECE7;color:#993C1D;border-color:#F5C4B3;margin-bottom:8px" onclick="rychlyVydejZeSkeneru(${id})">− Vydat 1 ks</button>
+      <button class="btn" style="width:100%;justify-content:center;background:#FAECE7;color:#993C1D;border-color:#F5C4B3;margin-bottom:8px" onclick="rychlyVydejZeSkeneru(${id})">− Vydat 1 balení${p && p.ksVBaleni > 1 ? ' ('+p.ksVBaleni+' ks)' : ''}</button>
       <div style="display:flex;gap:8px">
         <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="otevriZeSkeneru(${id})">Otevřít produkt</button>
         <button class="btn" style="flex:1;justify-content:center" onclick="pokracovatSkenovani()">Skenovat další</button>
@@ -1566,26 +1617,27 @@ function zobrazNalezenyProdukt(id, nazev, ean) {
     </div>`;
 }
 
-// Rychly vydej 1 ks primo z vysledku skenovani — pro sestricku u kresla,
-// ktera nema cas otevirat detail produktu. Pro jine mnozstvi/prijem/odpis
-// pouzij "Otevřít produkt".
+// Rychly vydej 1 BALENI primo z vysledku skenovani — pro sestricku u kresla,
+// ktera nema cas otevirat detail produktu. Odecte cele baleni (ksVBaleni ks).
+// Pro jine mnozstvi/prijem/odpis pouzij "Otevřít produkt".
 function rychlyVydejZeSkeneru(id) {
   const p = allProducts.find(x => x.id === id);
   if (!p) return;
+  const ksb = p.ksVBaleni || 1;
   const puvodniMnozstvi = p.mnozstvi;
-  const odhad = Math.max(0, (puvodniMnozstvi || 0) - 1);
+  const odhad = Math.max(0, (puvodniMnozstvi || 0) - ksb);
 
   rychlaAktualizace(id, odhad);
   document.getElementById('skenerVysledek').innerHTML = '<div class="content-card full" style="padding:20px;text-align:center"><div class="spinner" style="margin:0 auto 12px"></div>Vydávám...</div>';
 
-  callBackend('updateMnozstvi', { id: id, zmena: -1, typ: 'výdej', poznamka: 'rychlý výdej ze skeneru' })
+  callBackend('updateMnozstvi', { id: id, zmena: -ksb, typ: 'výdej', poznamka: 'rychlý výdej ze skeneru' })
     .then(function(res) {
       if (res.noveMnozstvi !== odhad) rychlaAktualizace(id, res.noveMnozstvi);
       document.getElementById('skenerVysledek').innerHTML = `
         <div class="content-card full" style="padding:20px;text-align:center">
           <div style="font-size:32px;margin-bottom:8px">✓</div>
           <div style="font-size:16px;font-weight:600;margin-bottom:4px">${p.nazev}</div>
-          <div style="font-size:13px;color:#993C1D;margin-bottom:16px">Vydáno 1 ks · nyní ${res.noveMnozstvi} ks</div>
+          <div style="font-size:13px;color:#993C1D;margin-bottom:16px">Vydáno 1 balení${ksb>1?' ('+ksb+' ks)':''} · nyní ${res.noveMnozstvi} ks</div>
           <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="pokracovatSkenovani()">Skenovat další</button>
         </div>`;
     })
