@@ -406,6 +406,10 @@ tr:hover td{background:#fafafa;cursor:pointer}
         </div>
 
         <div id="skenerVysledek" style="margin-top:16px"></div>
+
+        <div style="margin-top:16px;padding:12px 14px;background:#F0F6FF;border:1px solid #D6E4FF;border-radius:8px;font-size:12px;color:#334">
+          📟 <strong>Máš Bluetooth čtečku?</strong> Po spárování s telefonem stačí jen skenovat — funguje i z jiných obrazovek appky, telefon může být v kapse (jen musí mít odemčenou obrazovku s otevřenou appkou).
+        </div>
       </div>
     </div>
 
@@ -1643,6 +1647,80 @@ function zpracujNaskenovanyEAN(ean) {
       document.getElementById('skenerVysledek').innerHTML = '<div class="empty">Chyba: ' + esc(e.message) + '</div>';
       skenerAktivni = true;
     });
+}
+
+// ── HARDWAROVÁ ČTEČKA (Bluetooth/USB, emuluje klávesnici) ──────────────
+// Bezdrátová/USB čtečka po naskenování "napíše" znaky kódu a stiskne Enter
+// (tzv. keyboard wedge). Tenhle listener rozpozná RYCHLOU dávku znaků
+// zakončenou Enterem/Tabem a zpracuje ji stejně jako sken z kamery —
+// funguje z jakékoli obrazovky, telefon může být v kapse. Běžné psaní na
+// klávesnici to neovlivní: člověk nikdy nepíše rychlostí pod ~35 ms/znak,
+// takže se davka nikdy nesestaví z ručního psaní.
+let hwBuf = '';
+let hwLastTime = 0;
+let hwBurstEl = null;      // pole, do ktereho pripadne "prosakl" 1. znak
+let hwBurstElValue = null; // jeho hodnota pred davkou (pro obnovu)
+const HW_MAX_GAP_MS = 35;
+const HW_MIN_LEN = 4;
+
+function hwScanAktivni() {
+  // Jen po přihlášení a když není otevřený žádný modal (aby to nerušilo
+  // úmyslné psaní do formuláře / PINu / množství).
+  if (document.getElementById('appRoot').style.display === 'none') return false;
+  if (document.getElementById('modalOverlay').classList.contains('open')) return false;
+  if (document.getElementById('editModalOverlay').classList.contains('open')) return false;
+  return true;
+}
+
+function hwReset() { hwBuf = ''; hwBurstEl = null; hwBurstElValue = null; }
+
+document.addEventListener('keydown', function(e) {
+  if (!hwScanAktivni()) { hwReset(); return; }
+  const now = performance.now();
+  const gap = now - hwLastTime;
+  hwLastTime = now;
+
+  if (e.key === 'Enter' || e.key === 'Tab') {
+    if (hwBuf.length >= HW_MIN_LEN) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (hwBurstEl) { try { hwBurstEl.value = hwBurstElValue; } catch(err){} }
+      const code = hwBuf;
+      hwReset();
+      hwSken(code);
+      return;
+    }
+    hwReset();
+    return; // krátký / pomalý vstup — normální Enter (potvrzení formuláře atd.)
+  }
+
+  if (e.key && e.key.length === 1) {
+    if (gap > HW_MAX_GAP_MS || hwBuf.length === 0) {
+      // Nový začátek dávky — 1. znak necháme projít (ještě nevíme, že je to
+      // sken); zapamatujeme si fokusované pole, ať ho pak umíme obnovit.
+      hwBuf = e.key;
+      const ae = document.activeElement;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) {
+        hwBurstEl = ae; hwBurstElValue = ae.value;
+      } else {
+        hwBurstEl = null; hwBurstElValue = null;
+      }
+    } else {
+      // 2. a další znak rychlé dávky — už víme, že jde o čtečku: nepouštíme
+      // do fokusovaného pole.
+      hwBuf += e.key;
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (hwBuf.length > 40) hwReset(); // příliš dlouhé — není to čárový kód
+  }
+}, true);
+
+// Zpracuj kód z hardwarové čtečky — přepni na obrazovku skeneru a použij
+// stejný tok jako kamera (najde produkt / nabídne rychlý výdej / neznámý EAN).
+function hwSken(code) {
+  showScreen('skener');
+  zpracujNaskenovanyEAN(code);
 }
 
 function zobrazNalezenyProdukt(id) {
