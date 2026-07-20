@@ -738,8 +738,36 @@ let kategorieMapa = {};
 
 function nactiKategorie() {
   callBackend('getKategorie')
-    .then(function(mapa) { kategorieMapa = mapa || {}; })
+    .then(function(mapa) {
+      kategorieMapa = mapa || {};
+      naplnKategorieSelect(document.getElementById('ef_kategorie').value);
+    })
     .catch(function(e) { console.error(e); });
+}
+
+// Zakladni sada kategorii, co appka nabizi, i kdyz jeste zadny produkt s
+// danou kategorii v tabulce neni (pojistka, aby seznam nikdy neochudl).
+// Kazda DALSI kategorie, kterou zapises u nejakeho produktu v tabulce
+// (treba primo v Google Sheets), se sem prida sama — presne jako u
+// Podkategorie, zadny zasah do kodu neni potreba.
+const ZAKLADNI_KATEGORIE = ['Hygiena','Bělení','Dezinfekce','Kompozita','Endodontický materiál','Lepící systémy','Nástroje','Přístroje','Spotřební materiál','Otiskovací materiál','BTK a servis','Ostatní'];
+
+// Naplni #ef_kategorie sjednocenim zakladni sady a vsech kategorii, ktere
+// uz existuji v datech (kategorieMapa — nactena v nactiKategorie()).
+function naplnKategorieSelect(vybranaHodnota) {
+  const vsechny = new Set(ZAKLADNI_KATEGORIE);
+  // Kategorie z jiz nactenych produktu (allProducts) — na rozdil od
+  // kategorieMapa (ta je jen pro cascading Podkategorii a preskakuje
+  // radky bez vyplnene Podkategorie, viz getKategorie() na backendu).
+  // Diky tomu se objevi i kategorie jako "Anestetika" bez podkategorii.
+  (allProducts || []).forEach(function(p) {
+    const k = (p.kategorie || '').toString().trim();
+    if (k) vsechny.add(k);
+  });
+  const serazene = Array.from(vsechny).sort((a, b) => a.localeCompare(b, 'cs'));
+  const sel = document.getElementById('ef_kategorie');
+  sel.innerHTML = serazene.map(function(k) { return `<option>${esc(k)}</option>`; }).join('');
+  if (vybranaHodnota && serazene.includes(vybranaHodnota)) sel.value = vybranaHodnota;
 }
 
 // Konfigurace sdruzenych podkategorii (rukavice/rousky apod.): mapa
@@ -1480,6 +1508,7 @@ function showAddModal() {
   editingId = null;
   document.getElementById('editModalTitle').textContent = 'Přidat produkt';
   ['nazev','dodavatel','poznamka_edit','ean'].forEach(f => document.getElementById('ef_'+f).value = '');
+  naplnKategorieSelect('Spotřební materiál');
   document.getElementById('ef_ksVBaleni').value = 1;
   document.getElementById('ef_minimum').value = 1;
   document.getElementById('ef_optimum').value = 2;
@@ -1496,7 +1525,7 @@ function showEditModal(id) {
   editingId = id;
   document.getElementById('editModalTitle').textContent = 'Upravit produkt';
   document.getElementById('ef_nazev').value = p.nazev;
-  document.getElementById('ef_kategorie').value = p.kategorie || 'Spotřební materiál';
+  naplnKategorieSelect(p.kategorie || 'Spotřební materiál');
   document.getElementById('ef_dodavatel').value = p.dodavatel || '';
   document.getElementById('ef_ksVBaleni').value = p.ksVBaleni;
   document.getElementById('ef_minimum').value = p.minimum;
